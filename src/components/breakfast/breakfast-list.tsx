@@ -18,7 +18,7 @@ interface Props {
   withRequests: any[]
   properties: any[]
   currentPropertyId?: string
-  organizationId: string
+  organizationId: string | null
 }
 
 export function BreakfastListView({
@@ -44,6 +44,11 @@ export function BreakfastListView({
   }
 
   async function generateList() {
+    if (!currentPropertyId) {
+      toast.error('Select one accommodation before generating breakfast entries')
+      return
+    }
+
     setIsGenerating(true)
     try {
       const res = await fetch('/api/breakfast/generate', {

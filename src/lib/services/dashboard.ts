@@ -152,17 +152,17 @@ function toStay(row: StayRow): Stay {
 }
 
 export async function getOwnerDashboardData(
-  organizationId: string,
+  organizationId: string | null,
   date: string,
   propertyId?: string,
+  propertyIds?: string[],
 ): Promise<OwnerDashboardData> {
   const supabase = await createClient()
-  const overview = await getDailyOverview(organizationId, date, propertyId)
+  const overview = await getDailyOverview(organizationId, date, propertyId, propertyIds)
 
   const upcomingQuery = supabase
     .from('stays')
     .select('id, check_in_date, check_out_date, adults, children, status, registration_status, created_at, units(name), guests!primary_guest_id(first_name, last_name)')
-    .eq('organization_id', organizationId)
     .gte('check_out_date', date)
     .not('status', 'in', '("CANCELLED","NO_SHOW")')
     .order('check_in_date', { ascending: true })
@@ -171,7 +171,6 @@ export async function getOwnerDashboardData(
   const unitsQuery = supabase
     .from('units')
     .select('id, name, unit_type, status, housekeeping_status')
-    .eq('organization_id', organizationId)
     .eq('status', 'ACTIVE')
     .order('name')
     .limit(8)
@@ -179,7 +178,6 @@ export async function getOwnerDashboardData(
   const currentStaysQuery = supabase
     .from('stays')
     .select('id, unit_id, check_in_date, check_out_date, adults, children, status, units(name), guests!primary_guest_id(first_name, last_name)')
-    .eq('organization_id', organizationId)
     .eq('status', 'CHECKED_IN')
     .lte('check_in_date', date)
     .gt('check_out_date', date)
@@ -187,7 +185,6 @@ export async function getOwnerDashboardData(
   const tasksQuery = supabase
     .from('housekeeping_tasks')
     .select('id, task_type, title, due_date, priority, units(name)')
-    .eq('organization_id', organizationId)
     .in('status', ['OPEN', 'IN_PROGRESS'])
     .order('priority', { ascending: false })
     .order('due_date', { ascending: true, nullsFirst: false })
@@ -196,7 +193,6 @@ export async function getOwnerDashboardData(
   const missingRegistrationQuery = supabase
     .from('stays')
     .select('id, check_in_date, check_out_date, adults, children, status, registration_status, units(name), guests!primary_guest_id(first_name, last_name)')
-    .eq('organization_id', organizationId)
     .in('registration_status', ['MISSING', 'PARTIAL'])
     .in('status', ['BOOKED', 'CHECKED_IN'])
     .gte('check_out_date', date)
@@ -206,9 +202,17 @@ export async function getOwnerDashboardData(
   const activityQuery = supabase
     .from('activity_logs')
     .select('id, action, entity_type, created_at, profiles(name, email)')
-    .eq('organization_id', organizationId)
     .order('created_at', { ascending: false })
     .limit(5)
+
+  if (organizationId) {
+    upcomingQuery.eq('organization_id', organizationId)
+    unitsQuery.eq('organization_id', organizationId)
+    currentStaysQuery.eq('organization_id', organizationId)
+    tasksQuery.eq('organization_id', organizationId)
+    missingRegistrationQuery.eq('organization_id', organizationId)
+    activityQuery.eq('organization_id', organizationId)
+  }
 
   if (propertyId) {
     upcomingQuery.eq('property_id', propertyId)
@@ -216,6 +220,14 @@ export async function getOwnerDashboardData(
     currentStaysQuery.eq('property_id', propertyId)
     tasksQuery.eq('property_id', propertyId)
     missingRegistrationQuery.eq('property_id', propertyId)
+    activityQuery.eq('property_id', propertyId)
+  } else if (propertyIds?.length) {
+    upcomingQuery.in('property_id', propertyIds)
+    unitsQuery.in('property_id', propertyIds)
+    currentStaysQuery.in('property_id', propertyIds)
+    tasksQuery.in('property_id', propertyIds)
+    missingRegistrationQuery.in('property_id', propertyIds)
+    activityQuery.in('property_id', propertyIds)
   }
 
   const [upcomingRes, unitsRes, currentStaysRes, tasksRes, missingRegistrationRes, activityRes] =

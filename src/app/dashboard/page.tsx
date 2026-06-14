@@ -9,6 +9,7 @@ import { format } from 'date-fns'
 
 import { requireAuth } from '@/lib/auth'
 import { getOwnerDashboardData } from '@/lib/services/dashboard'
+import { getPropertyScope, getScopePropertyIds, hasPropertyScope } from '@/lib/services/properties'
 import ActivityFeed from '@/components/dashboard/ActivityFeed'
 import TaskFocus from '@/components/dashboard/TaskFocus'
 import TodaySummary from '@/components/dashboard/TodaySummary'
@@ -52,8 +53,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const params = await searchParams
   const todayIso = format(new Date(), 'yyyy-MM-dd')
   const todayLabel = format(new Date(), 'EEEE, d MMMM yyyy')
-  const dashboard = profile.organization_id
-    ? await getOwnerDashboardData(profile.organization_id, todayIso, params.property)
+  const scope = await getPropertyScope(profile, params.property)
+  const dashboard = hasPropertyScope(scope)
+    ? await getOwnerDashboardData(scope.organizationId, todayIso, scope.propertyId, getScopePropertyIds(scope))
     : null
 
   if (!dashboard) {
@@ -67,7 +69,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </header>
 
         <section className="rounded-lg border border-border bg-card p-5 text-sm text-muted-foreground">
-          No organization is assigned to your account yet.
+          Select an accommodation to view the overview.
         </section>
       </div>
     )

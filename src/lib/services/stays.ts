@@ -92,7 +92,7 @@ export async function updateRegistrationStatus(
 }
 
 export async function getStaysByDate(
-  organizationId: string,
+  organizationId: string | null,
   date: string,
   propertyId?: string,
   propertyIds?: string[]
@@ -102,7 +102,6 @@ export async function getStaysByDate(
   const arrivalsQuery = supabase
     .from('stays')
     .select('*, units(name), properties(name), guests!primary_guest_id(first_name, last_name)')
-    .eq('organization_id', organizationId)
     .eq('check_in_date', date)
     .not('status', 'in', '("CANCELLED","NO_SHOW")')
     .order('arrival_time', { ascending: true, nullsFirst: false })
@@ -110,7 +109,6 @@ export async function getStaysByDate(
   const departuresQuery = supabase
     .from('stays')
     .select('*, units(name), properties(name), guests!primary_guest_id(first_name, last_name)')
-    .eq('organization_id', organizationId)
     .eq('check_out_date', date)
     .not('status', 'in', '("CANCELLED","NO_SHOW","BOOKED")')
     .order('departure_time', { ascending: true, nullsFirst: false })
@@ -118,10 +116,15 @@ export async function getStaysByDate(
   const inHouseQuery = supabase
     .from('stays')
     .select('*, units(name), properties(name), guests!primary_guest_id(first_name, last_name)')
-    .eq('organization_id', organizationId)
     .eq('status', 'CHECKED_IN')
     .lt('check_in_date', date)
     .gt('check_out_date', date)
+
+  if (organizationId) {
+    arrivalsQuery.eq('organization_id', organizationId)
+    departuresQuery.eq('organization_id', organizationId)
+    inHouseQuery.eq('organization_id', organizationId)
+  }
 
   if (propertyId) {
     arrivalsQuery.eq('property_id', propertyId)
@@ -147,7 +150,7 @@ export async function getStaysByDate(
 }
 
 export async function getDailyOverview(
-  organizationId: string,
+  organizationId: string | null,
   date: string,
   propertyId?: string,
   propertyIds?: string[]
@@ -160,35 +163,38 @@ export async function getDailyOverview(
   let breakfastTodayQuery = supabase
     .from('breakfast_items')
     .select('adults_count, children_count')
-    .eq('organization_id', organizationId)
     .eq('date', date)
     .not('status', 'eq', 'CANCELLED')
 
   let breakfastTomorrowQuery = supabase
     .from('breakfast_items')
     .select('adults_count, children_count')
-    .eq('organization_id', organizationId)
     .eq('date', tomorrowStr)
     .not('status', 'eq', 'CANCELLED')
 
   let openTasksQuery = supabase
     .from('housekeeping_tasks')
     .select('id', { count: 'exact' })
-    .eq('organization_id', organizationId)
     .in('status', ['OPEN', 'IN_PROGRESS'])
 
   let dirtyUnitsQuery = supabase
     .from('units')
     .select('id', { count: 'exact' })
-    .eq('organization_id', organizationId)
     .eq('housekeeping_status', 'DIRTY')
 
   let missingRegQuery = supabase
     .from('stays')
     .select('id', { count: 'exact' })
-    .eq('organization_id', organizationId)
     .in('registration_status', ['MISSING', 'PARTIAL'])
     .in('status', ['BOOKED', 'CHECKED_IN'])
+
+  if (organizationId) {
+    breakfastTodayQuery = breakfastTodayQuery.eq('organization_id', organizationId)
+    breakfastTomorrowQuery = breakfastTomorrowQuery.eq('organization_id', organizationId)
+    openTasksQuery = openTasksQuery.eq('organization_id', organizationId)
+    dirtyUnitsQuery = dirtyUnitsQuery.eq('organization_id', organizationId)
+    missingRegQuery = missingRegQuery.eq('organization_id', organizationId)
+  }
 
   if (propertyId) {
     breakfastTodayQuery = breakfastTodayQuery.eq('property_id', propertyId)

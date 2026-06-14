@@ -1,6 +1,6 @@
 import { requireAuth } from '@/lib/auth'
 import { getUnits } from '@/lib/services/units'
-import { getPropertyScope, getScopePropertyIds, hasOperationalScope } from '@/lib/services/properties'
+import { getPropertyScope, getScopePropertyIds, hasPropertyScope } from '@/lib/services/properties'
 import { UnitsBoard } from '@/components/units/units-board'
 import type { Metadata } from 'next'
 
@@ -15,7 +15,7 @@ export default async function UnitsPage({ searchParams }: UnitsPageProps) {
   const params = await searchParams
   const scope = await getPropertyScope(profile, params.property)
 
-  if (!hasOperationalScope(scope)) return <p className="text-muted-foreground text-sm">Select an accommodation to view units.</p>
+  if (!hasPropertyScope(scope)) return <p className="text-muted-foreground text-sm">Select an accommodation to view units.</p>
 
   const propertyIds = getScopePropertyIds(scope)
   const units = await getUnits(scope.organizationId, scope.propertyId, propertyIds)

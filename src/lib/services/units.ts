@@ -44,14 +44,14 @@ export async function updateUnit(
   return data
 }
 
-export async function getUnits(organizationId: string, propertyId?: string, propertyIds?: string[]): Promise<Unit[]> {
+export async function getUnits(organizationId: string | null, propertyId?: string, propertyIds?: string[]): Promise<Unit[]> {
   const supabase = await createClient()
   let query = supabase
     .from('units')
     .select('*, properties(name)')
-    .eq('organization_id', organizationId)
     .order('name')
 
+  if (organizationId) query = query.eq('organization_id', organizationId)
   if (propertyId) query = query.eq('property_id', propertyId)
   else if (propertyIds?.length) query = query.in('property_id', propertyIds)
 

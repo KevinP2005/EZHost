@@ -1,6 +1,6 @@
 import { requireAuth } from '@/lib/auth'
 import { getGuests } from '@/lib/services/guests'
-import { getPropertyScope, getScopePropertyIds, hasOperationalScope } from '@/lib/services/properties'
+import { getPropertyScope, getScopePropertyIds, hasPropertyScope } from '@/lib/services/properties'
 import { GuestsList } from '@/components/guests/guests-list'
 import type { Metadata } from 'next'
 
@@ -15,7 +15,7 @@ export default async function GuestsPage({ searchParams }: Props) {
   const params = await searchParams
   const scope = await getPropertyScope(profile, params.property)
 
-  if (!hasOperationalScope(scope)) return <p className="text-muted-foreground text-sm">Select an accommodation to view guests.</p>
+  if (!hasPropertyScope(scope)) return <p className="text-muted-foreground text-sm">Select an accommodation to view guests.</p>
 
   const guests = await getGuests(scope.organizationId, params.q, scope.propertyId, getScopePropertyIds(scope))
 

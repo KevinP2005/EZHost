@@ -1,6 +1,6 @@
 import { requireAuth } from '@/lib/auth'
 import { getHousekeepingOverview } from '@/lib/services/housekeeping'
-import { getPropertyScope, getScopePropertyIds, hasOperationalScope } from '@/lib/services/properties'
+import { getPropertyScope, getScopePropertyIds, hasPropertyScope } from '@/lib/services/properties'
 import { HousekeepingBoard } from '@/components/housekeeping/housekeeping-board'
 import type { Metadata } from 'next'
 
@@ -15,7 +15,7 @@ export default async function HousekeepingPage({ searchParams }: HousekeepingPag
   const params = await searchParams
   const scope = await getPropertyScope(profile, params.property)
 
-  if (!hasOperationalScope(scope)) return <p className="text-muted-foreground text-sm">Select an accommodation to view housekeeping.</p>
+  if (!hasPropertyScope(scope)) return <p className="text-muted-foreground text-sm">Select an accommodation to view housekeeping.</p>
 
   const propertyIds = getScopePropertyIds(scope)
   const data = await getHousekeepingOverview(scope.organizationId, scope.propertyId, propertyIds)

@@ -55,7 +55,7 @@ export async function upsertBreakfastItem(
 }
 
 export async function getBreakfastList(
-  organizationId: string,
+  organizationId: string | null,
   date: string,
   propertyId?: string,
   propertyIds?: string[]
@@ -70,11 +70,11 @@ export async function getBreakfastList(
       properties(name),
       stays(check_in_date, check_out_date, adults, children, guests!primary_guest_id(first_name, last_name))
     `)
-    .eq('organization_id', organizationId)
     .eq('date', date)
     .not('status', 'eq', 'CANCELLED')
     .order('units(name)', { ascending: true })
 
+  if (organizationId) query = query.eq('organization_id', organizationId)
   if (propertyId) query = query.eq('property_id', propertyId)
   else if (propertyIds?.length) query = query.in('property_id', propertyIds)
 

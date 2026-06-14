@@ -97,7 +97,7 @@ export async function updateUnitHousekeepingStatus(
 }
 
 export async function getHousekeepingOverview(
-  organizationId: string,
+  organizationId: string | null,
   propertyId?: string,
   propertyIds?: string[]
 ) {
@@ -106,21 +106,21 @@ export async function getHousekeepingOverview(
   let unitsQuery = supabase
     .from('units')
     .select('*, properties(name)')
-    .eq('organization_id', organizationId)
     .eq('status', 'ACTIVE')
     .order('name')
 
+  if (organizationId) unitsQuery = unitsQuery.eq('organization_id', organizationId)
   if (propertyId) unitsQuery = unitsQuery.eq('property_id', propertyId)
   else if (propertyIds?.length) unitsQuery = unitsQuery.in('property_id', propertyIds)
 
   let tasksQuery = supabase
     .from('housekeeping_tasks')
     .select('*, units(name), profiles!assigned_to_profile_id(name)')
-    .eq('organization_id', organizationId)
     .in('status', ['OPEN', 'IN_PROGRESS'])
     .order('priority', { ascending: false })
     .order('due_date', { ascending: true, nullsFirst: false })
 
+  if (organizationId) tasksQuery = tasksQuery.eq('organization_id', organizationId)
   if (propertyId) tasksQuery = tasksQuery.eq('property_id', propertyId)
   else if (propertyIds?.length) tasksQuery = tasksQuery.in('property_id', propertyIds)
 

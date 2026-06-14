@@ -1,7 +1,7 @@
 import { requireAuth } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { StaysList } from '@/components/stays/stays-list'
-import { getPropertyScope, getScopePropertyIds, hasOperationalScope } from '@/lib/services/properties'
+import { getPropertyScope, getScopePropertyIds, hasPropertyScope } from '@/lib/services/properties'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Stays' }
@@ -15,7 +15,7 @@ export default async function StaysPage({ searchParams }: Props) {
   const params = await searchParams
   const scope = await getPropertyScope(profile, params.property)
 
-  if (!hasOperationalScope(scope)) {
+  if (!hasPropertyScope(scope)) {
     return <p className="text-muted-foreground text-sm">Select an accommodation to view stays.</p>
   }
 
@@ -29,10 +29,10 @@ export default async function StaysPage({ searchParams }: Props) {
       properties(name),
       guests!primary_guest_id(first_name, last_name)
     `)
-    .eq('organization_id', scope.organizationId)
     .order('check_in_date', { ascending: false })
     .limit(100)
 
+  if (scope.organizationId) query = query.eq('organization_id', scope.organizationId)
   if (params.status) query = query.eq('status', params.status)
   if (scope.propertyId) query = query.eq('property_id', scope.propertyId)
   else {

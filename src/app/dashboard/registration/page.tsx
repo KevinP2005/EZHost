@@ -1,6 +1,6 @@
 import { requireAuth } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { getPropertyScope, getScopePropertyIds, hasOperationalScope } from '@/lib/services/properties'
+import { getPropertyScope, getScopePropertyIds, hasPropertyScope } from '@/lib/services/properties'
 import { RegistrationOverview } from '@/components/registration/registration-overview'
 import type { Metadata } from 'next'
 
@@ -15,7 +15,7 @@ export default async function RegistrationPage({ searchParams }: RegistrationPag
   const params = await searchParams
   const scope = await getPropertyScope(profile, params.property)
 
-  if (!hasOperationalScope(scope)) return <p className="text-muted-foreground text-sm">Select an accommodation to view registrations.</p>
+  if (!hasPropertyScope(scope)) return <p className="text-muted-foreground text-sm">Select an accommodation to view registrations.</p>
 
   const supabase = await createClient()
   let query = supabase
@@ -27,11 +27,11 @@ export default async function RegistrationPage({ searchParams }: RegistrationPag
       properties(name),
       guests!primary_guest_id(first_name, last_name, email, nationality, document_type, document_number, date_of_birth)
     `)
-    .eq('organization_id', scope.organizationId)
     .in('status', ['BOOKED', 'CHECKED_IN'])
     .order('check_in_date', { ascending: true })
     .limit(200)
 
+  if (scope.organizationId) query = query.eq('organization_id', scope.organizationId)
   if (scope.propertyId) query = query.eq('property_id', scope.propertyId)
   else {
     const propertyIds = getScopePropertyIds(scope)

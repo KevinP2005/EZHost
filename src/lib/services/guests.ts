@@ -40,7 +40,7 @@ export async function updateGuest(
 }
 
 export async function getGuests(
-  organizationId: string,
+  organizationId: string | null,
   search?: string,
   propertyId?: string,
   propertyIds?: string[]
@@ -49,8 +49,9 @@ export async function getGuests(
   let query = supabase
     .from('guests')
     .select('*')
-    .eq('organization_id', organizationId)
     .order('last_name', { ascending: true })
+
+  if (organizationId) query = query.eq('organization_id', organizationId)
 
   if (search) {
     query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`)
@@ -60,9 +61,9 @@ export async function getGuests(
     let staysQuery = supabase
       .from('stays')
       .select('primary_guest_id')
-      .eq('organization_id', organizationId)
       .not('primary_guest_id', 'is', null)
 
+    if (organizationId) staysQuery = staysQuery.eq('organization_id', organizationId)
     if (propertyId) staysQuery = staysQuery.eq('property_id', propertyId)
     else if (propertyIds?.length) staysQuery = staysQuery.in('property_id', propertyIds)
 

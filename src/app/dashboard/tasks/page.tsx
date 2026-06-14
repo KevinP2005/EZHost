@@ -1,6 +1,6 @@
 import { requireAuth } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { getPropertyScope, getScopePropertyIds, hasOperationalScope } from '@/lib/services/properties'
+import { getPropertyScope, getScopePropertyIds, hasPropertyScope } from '@/lib/services/properties'
 import { TasksView } from '@/components/tasks/tasks-view'
 import type { Metadata } from 'next'
 
@@ -15,14 +15,13 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const params = await searchParams
   const scope = await getPropertyScope(profile, params.property)
 
-  if (!hasOperationalScope(scope)) return <p className="text-muted-foreground text-sm">Select an accommodation to view tasks.</p>
+  if (!hasPropertyScope(scope)) return <p className="text-muted-foreground text-sm">Select an accommodation to view tasks.</p>
 
   const supabase = await createClient()
 
   let tasksQuery = supabase
     .from('housekeeping_tasks')
     .select('*, units(name), profiles!assigned_to_profile_id(name)')
-    .eq('organization_id', scope.organizationId)
     .in('status', ['OPEN', 'IN_PROGRESS', 'BLOCKED'])
     .order('priority', { ascending: false })
     .order('created_at', { ascending: false })
@@ -31,9 +30,13 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   let notesQuery = supabase
     .from('operational_notes')
     .select('*, profiles!created_by_profile_id(name)')
-    .eq('organization_id', scope.organizationId)
     .order('created_at', { ascending: false })
     .limit(50)
+
+  if (scope.organizationId) {
+    tasksQuery = tasksQuery.eq('organization_id', scope.organizationId)
+    notesQuery = notesQuery.eq('organization_id', scope.organizationId)
+  }
 
   if (scope.propertyId) {
     tasksQuery = tasksQuery.eq('property_id', scope.propertyId)
@@ -42,7 +45,9 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     const propertyIds = getScopePropertyIds(scope)
     if (propertyIds.length > 0) {
       tasksQuery = tasksQuery.in('property_id', propertyIds)
-      notesQuery = notesQuery.or(`property_id.in.(${propertyIds.join(',')}),property_id.is.null`)
+      notesQuery = scope.organizationId
+        ? notesQuery.or(`property_id.in.(${propertyIds.join(',')}),property_id.is.null`)
+        : notesQuery.in('property_id', propertyIds)
     }
   }
 

@@ -121,6 +121,10 @@ export function hasOperationalScope(scope: PropertyScope | null): scope is Prope
   return Boolean(scope?.organizationId)
 }
 
+export function hasPropertyScope(scope: PropertyScope | null): scope is PropertyScope {
+  return Boolean(scope && (scope.organizationId || scope.propertyIds.length > 0))
+}
+
 export function getScopePropertyIds(scope: PropertyScope) {
   if (scope.propertyId) return [scope.propertyId]
   if (scope.requiresPropertyFilter) return scope.propertyIds
