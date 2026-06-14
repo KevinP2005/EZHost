@@ -23,6 +23,8 @@ interface Props {
 export function CreateStayForm({ properties, units, guests, organizationId }: Props) {
   const router = useRouter()
   const [selectedPropertyId, setSelectedPropertyId] = useState('')
+  const [selectedUnitId, setSelectedUnitId] = useState('')
+  const [selectedGuestId, setSelectedGuestId] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   const {
@@ -46,7 +48,30 @@ export function CreateStayForm({ properties, units, guests, organizationId }: Pr
   })
 
   const filteredUnits = selectedPropertyId ? units.filter((u) => u.property_id === selectedPropertyId) : units
+  const selectedProperty = properties.find((property) => property.id === selectedPropertyId)
+  const selectedUnit = filteredUnits.find((unit) => unit.id === selectedUnitId)
+  const selectedGuest = guests.find((guest) => guest.id === selectedGuestId)
   const breakfastIncluded = watch('breakfast_included')
+
+  function handlePropertyChange(value: unknown) {
+    const propertyId = String(value ?? '')
+    setSelectedPropertyId(propertyId)
+    setSelectedUnitId('')
+    setValue('property_id', propertyId)
+    setValue('unit_id', '')
+  }
+
+  function handleUnitChange(value: unknown) {
+    const unitId = String(value ?? '')
+    setSelectedUnitId(unitId)
+    setValue('unit_id', unitId)
+  }
+
+  function handleGuestChange(value: unknown) {
+    const guestId = String(value ?? '')
+    setSelectedGuestId(guestId)
+    setValue('primary_guest_id', guestId || undefined)
+  }
 
   async function onSubmit(data: CreateStayInput) {
     setIsLoading(true)
@@ -77,8 +102,12 @@ export function CreateStayForm({ properties, units, guests, organizationId }: Pr
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Property</Label>
-              <Select onValueChange={(v) => { const s = String(v ?? ''); setSelectedPropertyId(s); setValue('property_id', s) }}>
-                <SelectTrigger><SelectValue placeholder="Select property" /></SelectTrigger>
+              <Select value={selectedPropertyId} onValueChange={handlePropertyChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select property">
+                    {selectedProperty?.name}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {properties.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
@@ -88,8 +117,12 @@ export function CreateStayForm({ properties, units, guests, organizationId }: Pr
 
             <div className="space-y-1.5">
               <Label>Unit / Room</Label>
-              <Select onValueChange={(v) => setValue('unit_id', String(v ?? ''))} disabled={!filteredUnits.length}>
-                <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
+              <Select value={selectedUnitId} onValueChange={handleUnitChange} disabled={!filteredUnits.length}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select unit">
+                    {selectedUnit?.name}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {filteredUnits.map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
                 </SelectContent>
@@ -100,8 +133,14 @@ export function CreateStayForm({ properties, units, guests, organizationId }: Pr
 
           <div className="space-y-1.5">
             <Label>Primary Guest</Label>
-            <Select onValueChange={(v) => setValue('primary_guest_id', v ? String(v) : undefined)}>
-              <SelectTrigger><SelectValue placeholder="Select guest (optional)" /></SelectTrigger>
+            <Select value={selectedGuestId} onValueChange={handleGuestChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select guest (optional)">
+                  {selectedGuest
+                    ? `${selectedGuest.first_name} ${selectedGuest.last_name}${selectedGuest.email ? ` (${selectedGuest.email})` : ''}`
+                    : undefined}
+                </SelectValue>
+              </SelectTrigger>
               <SelectContent>
                 {guests.map((g) => (
                   <SelectItem key={g.id} value={g.id}>

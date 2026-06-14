@@ -27,14 +27,16 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
   ])
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-xl font-semibold">New Stay</h1>
-      <CreateStayForm
-        properties={scope.properties}
-        units={units}
-        guests={guests}
-        organizationId={scope.organizationId}
-      />
+    <div className="flex min-h-[calc(100vh-7rem)] items-center justify-center py-6">
+      <div className="w-full max-w-2xl space-y-6">
+        <h1 className="text-xl font-semibold">New Stay</h1>
+        <CreateStayForm
+          properties={scope.properties}
+          units={units}
+          guests={guests}
+          organizationId={scope.organizationId}
+        />
+      </div>
     </div>
   )
 }
