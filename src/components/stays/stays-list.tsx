@@ -59,7 +59,7 @@ export function StaysList({ stays, properties, currentFilters, canEdit }: Props)
         {canEdit && (
           <Link href="/dashboard/stays/new">
             <Button size="sm" className="gap-1.5">
-              <Plus className="h-4 w-4" /> New Stay
+              <Plus className="h-4 w-4" /> New Service
             </Button>
           </Link>
         )}
@@ -95,7 +95,7 @@ export function StaysList({ stays, properties, currentFilters, canEdit }: Props)
           <p className="text-muted-foreground">No stays found.</p>
           {canEdit && (
             <Link href="/dashboard/stays/new">
-              <Button variant="outline" size="sm" className="mt-4">Create first stay</Button>
+              <Button variant="outline" size="sm" className="mt-4">Create first service</Button>
             </Link>
           )}
         </div>
