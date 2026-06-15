@@ -1,5 +1,5 @@
 import { requireRole } from '@/lib/auth'
-import { CreateServiceStartForm } from '@/components/stays/create-stay-form'
+import { AvailabilityCalendar, CreateServiceStartForm } from '@/components/stays/create-stay-form'
 import { getPropertyScope, hasPropertyScope } from '@/lib/services/properties'
 import type { Metadata } from 'next'
 
@@ -66,6 +66,18 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
   }
 
   if (params.step === 'availability' && params.service && params.property) {
+    return (
+      <div className="flex min-h-[calc(100vh-7rem)] items-center justify-center py-6">
+        <div className="w-full max-w-5xl space-y-6">
+          <h1 className="text-xl font-semibold">New Service</h1>
+          <BookingProgress activePhase={activePhase} />
+          <AvailabilityCalendar serviceType={params.service} propertyId={params.property} />
+        </div>
+      </div>
+    )
+  }
+
+  if (params.step === 'booking' && params.service && params.property) {
     const selectedService = params.service
       .split('_')
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -77,9 +89,9 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
           <h1 className="text-xl font-semibold">New Service</h1>
           <BookingProgress activePhase={activePhase} />
           <div className="rounded-lg border bg-card p-6">
-            <h2 className="text-sm font-semibold text-foreground">Availability</h2>
+            <h2 className="text-sm font-semibold text-foreground">Booking</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Availability for {selectedService} will be configured here later.
+              Booking details for {selectedService} will be configured here later.
             </p>
           </div>
         </div>
