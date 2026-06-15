@@ -37,7 +37,7 @@ function BookingProgress({ activePhase }: { activePhase: BookingPhase }) {
                 }`}
               />
               <p
-                className={`text-xs font-medium ${
+                className={`text-center text-xs font-medium ${
                   active ? 'text-primary' : complete ? 'text-foreground' : 'text-muted-foreground'
                 }`}
               >
