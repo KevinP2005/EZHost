@@ -70,7 +70,7 @@ export function CreateServiceStartForm({ properties, initialPropertyId }: Props)
     const params = new URLSearchParams({
       property: selectedPropertyId,
       service: selectedService,
-      step: 'details',
+      step: 'availability',
     })
 
     return `/dashboard/stays/new?${params.toString()}`
@@ -155,4 +155,3 @@ export function CreateServiceStartForm({ properties, initialPropertyId }: Props)
     </Card>
   )
 }
-
