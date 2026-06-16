@@ -27,6 +27,7 @@ export default async function RegistrationPage({ searchParams }: RegistrationPag
       properties(name),
       guests!primary_guest_id(first_name, last_name, email, nationality, document_type, document_number, date_of_birth)
     `)
+    .eq('booking_status', 'CONFIRMED')
     .in('status', ['BOOKED', 'CHECKED_IN'])
     .order('check_in_date', { ascending: true })
     .limit(200)

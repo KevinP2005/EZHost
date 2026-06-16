@@ -15,6 +15,7 @@ export type UnitStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
 export type HousekeepingStatus = 'CLEAN' | 'DIRTY' | 'INSPECTED' | 'OUT_OF_SERVICE'
 export type StaySource = 'MANUAL' | 'IMPORT' | 'PMS' | 'OTA' | 'OTHER'
 export type StayStatus = 'BOOKED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'NO_SHOW'
+export type BookingStatus = 'OFFER' | 'CONFIRMED'
 export type RegistrationStatus = 'MISSING' | 'PARTIAL' | 'COMPLETE' | 'NOT_REQUIRED'
 export type BreakfastStatus = 'PLANNED' | 'PREPARED' | 'SERVED' | 'CANCELLED'
 export type TaskType = 'CLEANING' | 'INSPECTION' | 'MAINTENANCE' | 'LAUNDRY' | 'OTHER'
@@ -22,6 +23,8 @@ export type TaskStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'BLOCKED'
 export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH'
 export type Department = 'RECEPTION' | 'HOUSEKEEPING' | 'KITCHEN' | 'MANAGEMENT' | 'GENERAL'
 export type NoteVisibility = 'INTERNAL' | 'MANAGEMENT_ONLY'
+export type EmailType = 'BOOKING_CONFIRMATION' | 'OFFER'
+export type EmailDeliveryStatus = 'SENT' | 'FAILED'
 
 export interface Organization {
   id: string
@@ -97,6 +100,7 @@ export interface Guest {
   address: string | null
   document_type: string | null
   document_number: string | null
+  company: string | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -117,11 +121,24 @@ export interface Stay {
   adults: number
   children: number
   status: StayStatus
+  booking_status: BookingStatus
   breakfast_included: boolean
   breakfast_count_adults: number
   breakfast_count_children: number
   local_tax_applicable: boolean
   local_tax_amount: number | null
+  room_count: number
+  room_label: string | null
+  rate_code: string | null
+  rate_label: string | null
+  nightly_rate: number | null
+  subtotal_amount: number | null
+  extras_amount: number | null
+  total_amount: number | null
+  currency: string
+  confirmation_preference: string | null
+  price_details: Json
+  extras_details: Json
   registration_status: RegistrationStatus
   notes: string | null
   internal_notes: string | null
@@ -224,5 +241,18 @@ export interface ActivityLog {
   entity_type: string
   entity_id: string | null
   metadata: Json | null
+  created_at: string
+}
+
+export interface EmailDelivery {
+  id: string
+  organization_id: string
+  booking_id: string
+  recipient: string
+  email_type: EmailType
+  resend_email_id: string | null
+  status: EmailDeliveryStatus
+  sent_at: string | null
+  error_message: string | null
   created_at: string
 }

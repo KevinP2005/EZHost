@@ -1,21 +1,24 @@
 import { requireRole } from '@/lib/auth'
-import { AvailabilityCalendar, CreateServiceStartForm } from '@/components/stays/create-stay-form'
+import { AvailabilityCalendar, BookingMatrix, CreateServiceStartForm, GuestDetailsStep } from '@/components/stays/create-stay-form'
 import { getPropertyScope, hasPropertyScope } from '@/lib/services/properties'
+import { createClient } from '@/lib/supabase/server'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'New Service' }
 
-type BookingPhase = 'overview' | 'availability' | 'booking'
+type BookingPhase = 'overview' | 'availability' | 'booking' | 'guest-details'
 
 const phases: Array<{ id: BookingPhase; label: string }> = [
   { id: 'overview', label: 'Overview' },
   { id: 'availability', label: 'Availability' },
   { id: 'booking', label: 'Booking' },
+  { id: 'guest-details', label: 'Guest Details' },
 ]
 
 function getActivePhase(step?: string): BookingPhase {
   if (step === 'availability') return 'availability'
   if (step === 'booking') return 'booking'
+  if (step === 'guest-details') return 'guest-details'
   return 'overview'
 }
 
@@ -24,7 +27,7 @@ function BookingProgress({ activePhase }: { activePhase: BookingPhase }) {
 
   return (
     <div className="rounded-lg border border-border bg-card px-4 py-3">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {phases.map((phase, index) => {
           const active = phase.id === activePhase
           const complete = index < activeIndex
@@ -52,7 +55,19 @@ function BookingProgress({ activePhase }: { activePhase: BookingPhase }) {
 }
 
 interface NewStayPageProps {
-  searchParams: Promise<{ property?: string; service?: string; step?: string }>
+  searchParams: Promise<{
+    property?: string
+    service?: string
+    step?: string
+    dates?: string
+    room?: string
+    rate?: string
+    rooms?: string
+    adults?: string
+    children?: string
+    extras?: string
+    nightlyPrice?: string
+  }>
 }
 
 export default async function NewStayPage({ searchParams }: NewStayPageProps) {
@@ -63,6 +78,18 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
 
   if (!hasPropertyScope(scope)) {
     return <p className="text-muted-foreground text-sm">Select an accommodation before creating a service.</p>
+  }
+
+  async function getBookingUnits(propertyId: string) {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('units')
+      .select('id, name, description, unit_type, capacity_adults, capacity_children')
+      .eq('property_id', propertyId)
+      .eq('status', 'ACTIVE')
+      .order('name')
+
+    return data ?? []
   }
 
   if (params.step === 'availability' && params.service && params.property) {
@@ -78,22 +105,49 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
   }
 
   if (params.step === 'booking' && params.service && params.property) {
-    const selectedService = params.service
-      .split('_')
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ')
+    const selectedProperty = scope.properties.find((property) => property.id === params.property)
+    const units = await getBookingUnits(params.property)
 
     return (
       <div className="flex min-h-[calc(100vh-7rem)] items-center justify-center py-6">
-        <div className="w-full max-w-2xl space-y-6">
+        <div className="w-full max-w-[1460px] space-y-6">
           <h1 className="text-xl font-semibold">New Service</h1>
           <BookingProgress activePhase={activePhase} />
-          <div className="rounded-lg border bg-card p-6">
-            <h2 className="text-sm font-semibold text-foreground">Booking</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Booking details for {selectedService} will be configured here later.
-            </p>
-          </div>
+          <BookingMatrix
+            serviceType={params.service}
+            propertyId={params.property}
+            propertyName={selectedProperty?.name}
+            dates={params.dates}
+            units={units}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (params.step === 'guest-details' && params.service && params.property) {
+    const selectedProperty = scope.properties.find((property) => property.id === params.property)
+    const units = await getBookingUnits(params.property)
+
+    return (
+      <div className="flex min-h-[calc(100vh-7rem)] items-center justify-center py-6">
+        <div className="w-full max-w-[1460px] space-y-6">
+          <h1 className="text-xl font-semibold">New Service</h1>
+          <BookingProgress activePhase={activePhase} />
+          <GuestDetailsStep
+            propertyId={params.property}
+            serviceType={params.service}
+            propertyName={selectedProperty?.name}
+            dates={params.dates}
+            roomId={params.room}
+            rateId={params.rate}
+            rooms={params.rooms}
+            adults={params.adults}
+            children={params.children}
+            extras={params.extras}
+            nightlyPrice={params.nightlyPrice}
+            units={units}
+          />
         </div>
       </div>
     )
