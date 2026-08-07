@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
-import { Plus, Filter } from 'lucide-react'
+import { CalendarDays, Plus, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -35,13 +35,24 @@ const statusColors: Record<string, string> = {
 
 interface Props {
   stays: any[]
-  properties: any[]
+  properties: PropertyOption[]
   currentFilters: { status?: string; property?: string }
   canEdit: boolean
 }
 
+interface PropertyOption {
+  id: string
+  name: string
+}
+
 export function StaysList({ stays, properties, currentFilters, canEdit }: Props) {
   const router = useRouter()
+  const todayStaysHref = currentFilters.property
+    ? `/dashboard/stays/today?property=${encodeURIComponent(currentFilters.property)}`
+    : '/dashboard/stays/today'
+  const selectedPropertyLabel = properties.find(
+    (property) => property.id === currentFilters.property,
+  )?.name ?? 'All properties'
 
   function applyFilter(key: string, value: string | null) {
     const v = value ?? ''
@@ -52,17 +63,32 @@ export function StaysList({ stays, properties, currentFilters, canEdit }: Props)
     router.push(`/dashboard/stays?${params.toString()}`)
   }
 
+  function openStayPanel(stayId: string) {
+    const params = new URLSearchParams()
+    if (currentFilters.status) params.set('status', currentFilters.status)
+    if (currentFilters.property) params.set('property', currentFilters.property)
+    params.set('stay', stayId)
+    router.push(`/dashboard/stays?${params.toString()}`, { scroll: false })
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Stays</h1>
-        {canEdit && (
-          <Link href="/dashboard/stays/new">
-            <Button size="sm" className="gap-1.5">
-              <Plus className="h-4 w-4" /> New Service
+        <div className="flex items-center gap-2">
+          <Link href={todayStaysHref}>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <CalendarDays className="h-4 w-4" /> Today&apos;s Stays
             </Button>
           </Link>
-        )}
+          {canEdit && (
+            <Link href="/dashboard/stays/new">
+              <Button size="sm" className="gap-1.5">
+                <Plus className="h-4 w-4" /> New Service
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -79,7 +105,7 @@ export function StaysList({ stays, properties, currentFilters, canEdit }: Props)
 
         <Select value={currentFilters.property ?? ''} onValueChange={(v) => applyFilter('property', v)}>
           <SelectTrigger className="w-44 h-8 text-xs">
-            <SelectValue placeholder="All properties" />
+            <SelectValue placeholder="All properties">{selectedPropertyLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">All properties</SelectItem>
@@ -118,7 +144,7 @@ export function StaysList({ stays, properties, currentFilters, canEdit }: Props)
                 <tr
                   key={stay.id}
                   className="border-b last:border-0 hover:bg-muted/20 cursor-pointer"
-                  onClick={() => router.push(`/dashboard/stays/${stay.id}`)}
+                  onClick={() => openStayPanel(stay.id)}
                 >
                   <td className="px-4 py-3 font-medium">
                     {stay.guests ? `${stay.guests.first_name} ${stay.guests.last_name}` : <span className="text-muted-foreground">—</span>}

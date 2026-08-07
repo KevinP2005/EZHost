@@ -3,6 +3,7 @@
 import { CalendarDays, Home, Users } from 'lucide-react'
 
 import type { Stay } from './types'
+import { StayPanelLink } from '@/components/stays/stay-panel-link'
 
 const STATUS_CONFIG: Record<Stay['status'], { label: string; className: string }> = {
   confirmed: {
@@ -44,12 +45,12 @@ export default function UpcomingStays({ stays }: { stays: Stay[] }) {
     <section className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">Upcoming Stays</h2>
-        <span className="text-xs font-medium text-muted-foreground">{stays.length} stays</span>
+        <span className="text-xs font-medium text-muted-foreground">{stays.length} arrivals</span>
       </div>
 
       {stays.length === 0 ? (
         <div className="px-4 py-8 text-sm text-muted-foreground">
-          No upcoming stays found.
+          No arrivals today.
         </div>
       ) : (
         <div className="divide-y divide-border">
@@ -57,9 +58,9 @@ export default function UpcomingStays({ stays }: { stays: Stay[] }) {
             const status = STATUS_CONFIG[stay.status]
 
             return (
-              <button
+              <StayPanelLink
                 key={stay.id}
-                type="button"
+                stayId={stay.id}
                 className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/50"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20">
@@ -93,7 +94,7 @@ export default function UpcomingStays({ stays }: { stays: Stay[] }) {
                 <span className={`w-24 shrink-0 rounded-md px-2 py-0.5 text-center text-[10.5px] font-bold ${status.className}`}>
                   {status.label}
                 </span>
-              </button>
+              </StayPanelLink>
             )
           })}
         </div>

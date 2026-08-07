@@ -93,6 +93,25 @@ export function TopBar({ profile, properties }: TopBarProps) {
     router.push(query ? `${pathname}?${query}` : pathname)
   }
 
+  function handleCreateBooking() {
+    const params = new URLSearchParams()
+
+    if (selectedPropertyId !== 'all') {
+      params.set('property', selectedPropertyId)
+    }
+
+    const query = params.toString()
+    router.push(query ? `/dashboard/stays/new?${query}` : '/dashboard/stays/new')
+  }
+
+  function handleTodayStays() {
+    const query = selectedPropertyId !== 'all'
+      ? `?property=${encodeURIComponent(selectedPropertyId)}`
+      : ''
+
+    router.push(`/dashboard/stays/today${query}`)
+  }
+
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-[#111111] px-4">
       <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -109,22 +128,24 @@ export function TopBar({ profile, properties }: TopBarProps) {
       <div className="flex min-w-0 shrink-0 items-center gap-2">
         <button
           type="button"
+          onClick={handleCreateBooking}
           className="group relative hidden h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-[color,background-color,transform] hover:text-foreground active:scale-95 md:flex"
           aria-label="Create booking"
         >
           <CalendarPlus className="h-4 w-4" aria-hidden="true" />
-          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-[1500ms]">
-            Neue Buchung
+          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-[800ms]">
+            Create booking
           </span>
         </button>
         <button
           type="button"
+          onClick={handleTodayStays}
           className="group relative hidden h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-[color,background-color,transform] hover:text-foreground active:scale-95 md:flex"
-          aria-label="Open calendar"
+          aria-label="Open today's stays"
         >
           <CalendarDays className="h-4 w-4" aria-hidden="true" />
-          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-[1500ms]">
-            Zeitleiste
+          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-[800ms]">
+            Today&apos;s stays
           </span>
         </button>
 
@@ -199,8 +220,8 @@ export function TopBar({ profile, properties }: TopBarProps) {
         >
           <Bell className="h-4 w-4" aria-hidden="true" />
           <span className="absolute right-2.5 top-2 h-1.5 w-1.5 rounded-full bg-rose-500" />
-          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-[1500ms]">
-            Benachrichtigungen
+          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-[800ms]">
+            Notifications
           </span>
         </button>
 
@@ -211,8 +232,8 @@ export function TopBar({ profile, properties }: TopBarProps) {
           aria-label="Sign out"
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
-          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-[1500ms]">
-            Logout
+          <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-[800ms]">
+            Sign out
           </span>
         </button>
 

@@ -212,8 +212,22 @@ function normalizeDate(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
-function isDateBlocked(_date: Date) {
-  return false
+function getTodayDateKey() {
+  return format(new Date(), 'yyyy-MM-dd')
+}
+
+function isDateInPast(date: Date) {
+  return getDateKey(normalizeDate(date)) < getTodayDateKey()
+}
+
+function isDateBlocked(date: Date) {
+  return isDateInPast(date)
+}
+
+function hasPastDateKeys(dateKeys: string[]) {
+  const today = getTodayDateKey()
+
+  return dateKeys.some((date) => date < today)
 }
 
 function getRangeDates(startDate: Date | null, endDate: Date | null) {
@@ -483,6 +497,8 @@ export function AvailabilityCalendar({ serviceType, propertyId }: AvailabilityCa
   }
 
   function continueToBooking() {
+    if (selectedDates.length === 0 || selectedDates.some(isDateInPast)) return
+
     const params = new URLSearchParams({
       property: propertyId,
       service: serviceType,
@@ -593,7 +609,7 @@ export function AvailabilityCalendar({ serviceType, propertyId }: AvailabilityCa
                         isRangeEdge && 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90',
                         blocked && 'cursor-not-allowed bg-muted/50 text-muted-foreground line-through opacity-60',
                       )}
-                      aria-label={format(day, 'MMMM d, yyyy')}
+                      aria-label={blocked ? `${format(day, 'MMMM d, yyyy')} unavailable` : format(day, 'MMMM d, yyyy')}
                       aria-pressed={selected}
                     >
                       {format(day, 'd')}
@@ -611,7 +627,7 @@ export function AvailabilityCalendar({ serviceType, propertyId }: AvailabilityCa
             <p className="mt-0.5 font-semibold text-foreground">{selectedPeriodLabel}</p>
           </div>
 
-          <Button type="button" disabled={selectedDates.length === 0} onClick={continueToBooking}>
+          <Button type="button" disabled={selectedDates.length === 0 || selectedDates.some(isDateInPast)} onClick={continueToBooking}>
             Continue
           </Button>
         </div>
@@ -637,6 +653,7 @@ function parseDateKeys(dateKeys?: string) {
 
 function formatBookingPeriod(dateKeys: string[]) {
   if (dateKeys.length === 0) return 'No period selected'
+  if (hasPastDateKeys(dateKeys)) return 'Past dates are not bookable'
 
   const sortedDates = dateKeys.slice().sort()
   const firstDate = new Date(`${sortedDates[0]}T00:00:00`)
@@ -659,6 +676,7 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, un
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>(() => createInitialPriceInputs(roomCategories))
   const serviceLabel = getServiceLabel(serviceType)
   const dateKeys = useMemo(() => parseDateKeys(dates), [dates])
+  const hasPastDates = hasPastDateKeys(dateKeys)
   const nights = Math.max(dateKeys.length, 1)
 
   const selectedRoom = roomCategories.find((room) => room.id === selectedRoomId) ?? roomCategories[0]
@@ -709,6 +727,8 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, un
   }
 
   function continueToGuestDetails() {
+    if (hasPastDates) return
+
     const params = new URLSearchParams({
       property: propertyId,
       service: serviceType,
@@ -1023,7 +1043,13 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, un
               <p className="mt-1 text-xs text-muted-foreground">Excl. local tax and applicable taxes.</p>
             </div>
 
-            <Button type="button" className="w-full" onClick={continueToGuestDetails}>
+            {hasPastDates && (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                Past dates cannot be booked. Please choose a current or future stay period.
+              </p>
+            )}
+
+            <Button type="button" className="w-full" disabled={hasPastDates} onClick={continueToGuestDetails}>
               Continue to guest details
             </Button>
           </div>
@@ -1070,6 +1096,7 @@ export function GuestDetailsStep({
   const serviceLabel = getServiceLabel(serviceType)
   const roomCategories = useMemo(() => buildRoomCategories(units), [units])
   const dateKeys = useMemo(() => parseDateKeys(dates), [dates])
+  const hasPastDates = hasPastDateKeys(dateKeys)
   const nights = Math.max(dateKeys.length, 1)
   const selectedRoom = roomCategories.find((room) => room.id === roomId) ?? roomCategories[0]
   const selectedRate = rateOptions.find((rate) => rate.id === rateId) ?? rateOptions[0]
@@ -1168,6 +1195,11 @@ export function GuestDetailsStep({
       return
     }
 
+    if (hasPastDates) {
+      toast.error('Past dates cannot be booked. Please choose a current or future stay period.')
+      return
+    }
+
     const checkOutDate = format(
       addDays(new Date(`${dateKeys[dateKeys.length - 1]}T00:00:00`), 1),
       'yyyy-MM-dd'
@@ -1226,7 +1258,7 @@ export function GuestDetailsStep({
       } else {
         toast.success(bookingStatus === 'CONFIRMED' ? 'Booking saved.' : 'Offer saved.')
       }
-      router.push(`/dashboard/stays/${payload.id}`)
+      router.push(`/dashboard/stays?stay=${encodeURIComponent(payload.id)}`)
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Something went wrong.')
     } finally {

@@ -10,7 +10,6 @@ import { format } from 'date-fns'
 import { requireAuth } from '@/lib/auth'
 import { getOwnerDashboardData } from '@/lib/services/dashboard'
 import { getPropertyScope, getScopePropertyIds, hasPropertyScope } from '@/lib/services/properties'
-import ActivityFeed from '@/components/dashboard/ActivityFeed'
 import TaskFocus from '@/components/dashboard/TaskFocus'
 import TodaySummary from '@/components/dashboard/TodaySummary'
 import UnitStatus from '@/components/dashboard/UnitStatus'
@@ -130,15 +129,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="space-y-5 xl:col-span-2">
           <UpcomingStays stays={dashboard.upcomingStays} />
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <TaskFocus tasks={dashboard.tasks} />
-            <UnitStatus units={dashboard.units} />
-          </div>
+          <UnitStatus units={dashboard.units} />
         </div>
 
         <div className="xl:col-span-1">
-          <ActivityFeed items={dashboard.activityFeed} />
+          <TaskFocus tasks={dashboard.tasks} />
         </div>
       </div>
     </div>

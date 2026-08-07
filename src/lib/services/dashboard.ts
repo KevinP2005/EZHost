@@ -163,7 +163,7 @@ export async function getOwnerDashboardData(
   const upcomingQuery = supabase
     .from('stays')
     .select('id, check_in_date, check_out_date, adults, children, status, registration_status, created_at, units(name), guests!primary_guest_id(first_name, last_name)')
-    .gte('check_out_date', date)
+    .eq('check_in_date', date)
     .not('status', 'in', '("CANCELLED","NO_SHOW")')
     .order('check_in_date', { ascending: true })
     .limit(5)

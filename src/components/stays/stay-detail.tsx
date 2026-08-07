@@ -29,9 +29,11 @@ interface Props {
   stayGuests: any[]
   notes: any[]
   canEdit: boolean
+  showHeader?: boolean
+  onUpdated?: () => void
 }
 
-export function StayDetail({ stay, stayGuests, notes, canEdit }: Props) {
+export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true, onUpdated }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -43,6 +45,7 @@ export function StayDetail({ stay, stayGuests, notes, canEdit }: Props) {
     })
     if (res.ok) {
       toast.success(action === 'check_in' ? 'Checked in' : 'Checked out')
+      onUpdated?.()
       startTransition(() => router.refresh())
     } else {
       toast.error('Failed to update status')
@@ -57,6 +60,7 @@ export function StayDetail({ stay, stayGuests, notes, canEdit }: Props) {
     })
     if (res.ok) {
       toast.success('Registration status updated')
+      onUpdated?.()
       startTransition(() => router.refresh())
     } else {
       toast.error('Failed to update')
@@ -69,20 +73,22 @@ export function StayDetail({ stay, stayGuests, notes, canEdit }: Props) {
   )
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard/stays">
-          <Button variant="ghost" size="sm" className="gap-1.5">
-            <ArrowLeft className="h-4 w-4" /> Stays
-          </Button>
-        </Link>
-        <h1 className="text-xl font-semibold">
-          {guest ? `${guest.first_name} ${guest.last_name}` : 'Stay Details'}
-        </h1>
-        <span className={`text-xs px-2 py-0.5 rounded ${statusColors[stay.status] ?? 'bg-gray-50'}`}>
-          {stay.status.replace('_', ' ')}
-        </span>
-      </div>
+    <div className={`space-y-6 ${showHeader ? 'max-w-3xl' : 'max-w-none'}`}>
+      {showHeader && (
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/stays">
+            <Button variant="ghost" size="sm" className="gap-1.5">
+              <ArrowLeft className="h-4 w-4" /> Stays
+            </Button>
+          </Link>
+          <h1 className="text-xl font-semibold">
+            {guest ? `${guest.first_name} ${guest.last_name}` : 'Stay Details'}
+          </h1>
+          <span className={`text-xs px-2 py-0.5 rounded ${statusColors[stay.status] ?? 'bg-gray-50'}`}>
+            {stay.status.replace('_', ' ')}
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>

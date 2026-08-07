@@ -1,5 +1,14 @@
 import { z } from 'zod'
 
+function getTodayDateKey() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
 export const createStaySchema = z.object({
   property_id: z.string().uuid(),
   unit_id: z.string().uuid(),
@@ -60,6 +69,22 @@ export const createStayFlowSchema = z.object({
     company: z.string().optional(),
   }),
   accompanying_guests: z.array(guestFlowSchema).default([]),
+}).superRefine((data, ctx) => {
+  if (data.check_in_date < getTodayDateKey()) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['check_in_date'],
+      message: 'Past dates cannot be booked.',
+    })
+  }
+
+  if (data.check_out_date <= data.check_in_date) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['check_out_date'],
+      message: 'Check-out must be after check-in.',
+    })
+  }
 })
 
 export type CreateStayFlowInput = z.infer<typeof createStayFlowSchema>

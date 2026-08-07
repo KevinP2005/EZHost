@@ -43,6 +43,15 @@ function resolveEmailType(bookingStatus: BookingStatus): BookingEmailType {
   return bookingStatus === 'OFFER' ? 'OFFER' : 'BOOKING_CONFIRMATION'
 }
 
+function formatFromAddress(propertyName: string, emailAddress: string) {
+  const displayName = `${propertyName} via EZHost`
+    .replace(/[\r\n<>]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return `${displayName} <${emailAddress}>`
+}
+
 async function recordEmailDelivery(input: {
   organizationId: string
   bookingId: string
@@ -67,9 +76,23 @@ async function recordEmailDelivery(input: {
   if (error) throw new Error(error.message)
 }
 
+async function getOrganizationReplyTo(organizationId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('email')
+    .eq('id', organizationId)
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  return data.email?.trim() || undefined
+}
+
 async function sendResendEmail(input: {
   from: string
   to: string
+  replyTo?: string
   subject: string
   html: string
   text: string
@@ -86,6 +109,7 @@ async function sendResendEmail(input: {
     body: JSON.stringify({
       from: input.from,
       to: input.to,
+      reply_to: input.replyTo,
       subject: input.subject,
       html: input.html,
       text: input.text,
@@ -111,8 +135,10 @@ export async function sendBookingEmail(input: SendBookingEmailInput): Promise<Se
     : 'Booking saved, but the confirmation email could not be sent.'
 
   try {
-    const from = process.env.RESEND_FROM_EMAIL
-    if (!from) throw new Error('RESEND_FROM_EMAIL is not configured.')
+    const fromEmail = process.env.RESEND_FROM_EMAIL
+    if (!fromEmail) throw new Error('RESEND_FROM_EMAIL is not configured.')
+    const from = formatFromAddress(input.hotelName, fromEmail)
+    const replyTo = await getOrganizationReplyTo(input.organizationId)
 
     const templateData: BookingEmailTemplateData = {
       guestName: input.guestName,
@@ -130,6 +156,7 @@ export async function sendBookingEmail(input: SendBookingEmailInput): Promise<Se
     const resendEmailId = await sendResendEmail({
       from,
       to: input.recipient,
+      replyTo,
       subject: template.subject,
       html: template.html,
       text: template.text,

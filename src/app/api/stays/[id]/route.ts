@@ -10,6 +10,53 @@ const patchSchema = z.object({
   registration_status: z.enum(['MISSING', 'PARTIAL', 'COMPLETE', 'NOT_REQUIRED']).optional(),
 }).passthrough()
 
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const profile = await getProfile()
+  if (!profile) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: stay, error } = await supabase
+    .from('stays')
+    .select(`
+      *,
+      units(id, name, unit_type, housekeeping_status),
+      properties(id, name),
+      guests!primary_guest_id(id, first_name, last_name, email, phone, nationality, document_type, document_number, date_of_birth)
+    `)
+    .eq('id', id)
+    .single()
+
+  if (error || !stay) {
+    return NextResponse.json({ error: 'Stay not found' }, { status: 404 })
+  }
+
+  try {
+    await assertCanAccessProperty(profile, stay.property_id)
+  } catch {
+    return NextResponse.json({ error: 'Stay not found' }, { status: 404 })
+  }
+
+  const [{ data: stayGuests }, { data: notes }] = await Promise.all([
+    supabase
+      .from('stay_guests')
+      .select('*, guests(id, first_name, last_name, email)')
+      .eq('stay_id', id),
+    supabase
+      .from('operational_notes')
+      .select('*, profiles!created_by_profile_id(name)')
+      .eq('stay_id', id)
+      .order('created_at', { ascending: false }),
+  ])
+
+  return NextResponse.json({
+    stay,
+    stayGuests: stayGuests ?? [],
+    notes: notes ?? [],
+    canEdit: ['SUPER_ADMIN', 'ORG_ADMIN', 'MANAGER', 'RECEPTION'].includes(profile.role),
+  })
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const profile = await getProfile()
   if (!profile) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

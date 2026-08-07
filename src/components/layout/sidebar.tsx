@@ -126,7 +126,7 @@ export function Sidebar({ profile }: SidebarProps) {
         ) : null}
 
         {collapsed && (
-          <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-hover:delay-[1500ms]">
+          <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-hover:delay-[800ms]">
             {item.label}
             {item.badge ? ` (${item.badge})` : ''}
           </span>
@@ -214,7 +214,7 @@ export function Sidebar({ profile }: SidebarProps) {
           />
           {!collapsed && <span className="text-[12.5px]">Collapse</span>}
           {collapsed && (
-            <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-hover:delay-[1500ms]">
+            <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-[12px] font-semibold text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-hover:delay-[800ms]">
               Expand sidebar
             </span>
           )}
