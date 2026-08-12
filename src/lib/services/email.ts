@@ -148,9 +148,13 @@ export async function sendBookingEmail(input: SendBookingEmailInput): Promise<Se
       nights: calculateNights(input.stay.check_in_date, input.stay.check_out_date),
       guestCount: input.stay.adults + input.stay.children,
       roomName: input.roomName,
+      subtotalAmount: input.stay.subtotal_amount != null ? Number(input.stay.subtotal_amount) : undefined,
+      extrasAmount: input.stay.extras_amount != null ? Number(input.stay.extras_amount) : undefined,
       totalPrice: Number(input.stay.total_amount ?? 0),
       currency: input.stay.currency,
       bookingReference: input.stay.external_reference ?? input.stay.id,
+      arrivalTime: input.stay.arrival_time ?? undefined,
+      hotelEmail: replyTo,
     }
     const template = renderBookingEmailTemplate(emailType, templateData)
     const resendEmailId = await sendResendEmail({

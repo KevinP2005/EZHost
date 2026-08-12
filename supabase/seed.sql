@@ -65,7 +65,7 @@ BEGIN
   -- PROFILES
   -- ============================================================
   INSERT INTO profiles (id, auth_user_id, organization_id, name, email, role, status) VALUES
-  (v_super_admin_id, v_super_admin_auth_id, NULL,              'Platform Admin', 'admin@ezhost.app',          'SUPER_ADMIN', 'ACTIVE'),
+  (v_super_admin_id, v_super_admin_auth_id, NULL,              'EZHost Admin',   'admin@ezhost.app',          'SUPER_ADMIN', 'ACTIVE'),
   (v_org_admin_id,   v_org_admin_auth_id,   v_org_id,          'Maria Berger',   'maria@alpengasthof.at',     'ORG_ADMIN',   'ACTIVE'),
   (v_reception_id,   v_reception_auth_id,   v_org_id,          'Thomas Huber',   'thomas@alpengasthof.at',    'RECEPTION',   'ACTIVE');
 
@@ -75,6 +75,13 @@ BEGIN
   INSERT INTO properties (id, organization_id, name, type, address, city, country, timezone, active) VALUES
   (v_prop1_id, v_org_id, 'Hotel Alpenhof', 'HOTEL',        'Hauptstraße 12', 'Feldkirch', 'AT', 'Europe/Vienna', TRUE),
   (v_prop2_id, v_org_id, 'Bergchalet Lüns', 'CHALET',      'Alpenweg 3',     'Lüns',      'AT', 'Europe/Vienna', TRUE);
+
+  -- ============================================================
+  -- PROFILE PROPERTY ACCESS (RECEPTION role needs explicit access)
+  -- ============================================================
+  INSERT INTO profile_property_access (profile_id, property_id) VALUES
+  (v_reception_id, v_prop1_id),
+  (v_reception_id, v_prop2_id);
 
   -- ============================================================
   -- UNITS – Hotel Alpenhof

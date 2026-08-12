@@ -8,7 +8,7 @@ export function PromoPanel() {
     <div className="relative h-full w-full overflow-hidden">
       <Image
         src={PROMO_IMAGE_URL}
-        alt="Tropical beach landscape"
+        alt="Alpine hospitality landscape"
         fill
         priority
         sizes="45vw"
@@ -19,11 +19,11 @@ export function PromoPanel() {
 
       <div className="absolute right-8 top-8 z-10 max-w-sm text-right">
         <h2 className="mb-2 text-[22px] font-semibold leading-snug text-white">
-          Hosting operations, beautifully under control.
+          Hospitality operations, beautifully under control.
         </h2>
         <p className="text-[13.5px] leading-relaxed text-white/80">
-          Manage services, customers, billing signals, and support workflows from
-          one focused SaaS workspace.
+          Manage arrivals, housekeeping, breakfast lists and guest registration
+          from one focused operations dashboard.
         </p>
       </div>
     </div>
