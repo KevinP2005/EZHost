@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { format, parseISO } from 'date-fns'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
+import { EditStayForm } from './edit-stay-form'
 
 const statusColors: Record<string, string> = {
   BOOKED: 'text-green-600',
@@ -51,6 +52,7 @@ interface Props {
 export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true, onUpdated }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isEditing, setIsEditing] = useState(false)
 
   async function updateStatus(action: 'check_in' | 'check_out') {
     const res = await fetch(`/api/stays/${stay.id}`, {
@@ -87,6 +89,21 @@ export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true
     (new Date(stay.check_out_date).getTime() - new Date(stay.check_in_date).getTime()) / (1000 * 60 * 60 * 24)
   )
 
+  if (isEditing) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">Buchung bearbeiten</h2>
+        </div>
+        <EditStayForm
+          stay={stay}
+          onSaved={() => { setIsEditing(false); onUpdated?.() }}
+          onCancel={() => setIsEditing(false)}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className={`space-y-6 ${showHeader ? 'max-w-3xl' : 'max-w-none'}`}>
       {showHeader && (
@@ -102,6 +119,19 @@ export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true
           <span className={`text-xs px-2 py-0.5 rounded ${statusColors[stay.status] ?? 'text-gray-400'}`}>
             {statusLabels[stay.status] ?? stay.status}
           </span>
+          {canEdit && (
+            <Button variant="ghost" size="sm" className="ml-auto gap-1.5" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-3.5 w-3.5" /> Edit
+            </Button>
+          )}
+        </div>
+      )}
+
+      {!showHeader && canEdit && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsEditing(true)}>
+            <Pencil className="h-3.5 w-3.5" /> Bearbeiten
+          </Button>
         </div>
       )}
 

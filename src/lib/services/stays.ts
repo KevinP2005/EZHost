@@ -1,7 +1,7 @@
 ﻿import { createClient } from '@/lib/supabase/server'
 import { createActivityLog } from '@/lib/services/activity'
 import type { Stay, StayStatus, RegistrationStatus, BookingStatus } from '@/lib/database.types'
-import type { CreateStayInput, CreateStayFlowInput } from '@/lib/schemas/stays'
+import type { CreateStayInput, CreateStayFlowInput, UpdateStayInput } from '@/lib/schemas/stays'
 
 // Re-export schema + type so existing imports from this module still work
 export { createStaySchema, createStayFlowSchema } from '@/lib/schemas/stays'
@@ -110,7 +110,7 @@ export async function updateStay(
   stayId: string,
   organizationId: string,
   profileId: string,
-  input: Partial<CreateStayInput>
+  input: UpdateStayInput
 ): Promise<Stay> {
   const supabase = await createClient()
   const { data, error } = await supabase

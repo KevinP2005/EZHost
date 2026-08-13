@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getProfile } from '@/lib/auth'
 import { updateStay, checkInStay, checkOutStay, updateRegistrationStatus } from '@/lib/services/stays'
+import { updateStaySchema } from '@/lib/schemas/stays'
 import { assertCanAccessProperty } from '@/lib/services/properties'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
@@ -99,7 +100,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       await updateRegistrationStatus(id, orgId, profile.id, registration_status)
       return NextResponse.json({ ok: true })
     } else {
-      result = await updateStay(id, orgId, profile.id, rest)
+      const parsed = updateStaySchema.safeParse(rest)
+      if (!parsed.success) {
+        return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+      }
+      result = await updateStay(id, orgId, profile.id, parsed.data)
     }
 
     return NextResponse.json(result)

@@ -32,6 +32,32 @@ export const createStaySchema = z.object({
 
 export type CreateStayInput = z.infer<typeof createStaySchema>
 
+export const updateStaySchema = z.object({
+  unit_id: z.string().uuid().optional(),
+  external_reference: z.string().nullable().optional(),
+  check_in_date: z.string().optional(),
+  check_out_date: z.string().optional(),
+  arrival_time: z.string().nullable().optional(),
+  departure_time: z.string().nullable().optional(),
+  adults: z.number().int().min(1).optional(),
+  children: z.number().int().min(0).optional(),
+  breakfast_included: z.boolean().optional(),
+  breakfast_count_adults: z.number().int().min(0).optional(),
+  breakfast_count_children: z.number().int().min(0).optional(),
+  local_tax_applicable: z.boolean().optional(),
+  local_tax_amount: z.number().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  internal_notes: z.string().nullable().optional(),
+  room_label: z.string().nullable().optional(),
+  nightly_rate: z.number().min(0).nullable().optional(),
+  subtotal_amount: z.number().min(0).nullable().optional(),
+  extras_amount: z.number().min(0).nullable().optional(),
+  total_amount: z.number().min(0).nullable().optional(),
+  currency: z.string().min(1).optional(),
+})
+
+export type UpdateStayInput = z.infer<typeof updateStaySchema>
+
 const guestFlowSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   birthDate: z.string().optional(),
