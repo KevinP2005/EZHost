@@ -3,6 +3,7 @@
 import { format, parseISO } from 'date-fns'
 import { ArrowLeft, Eye, FileText, RefreshCw } from 'lucide-react'
 
+import { formatMoney as formatMoneyBase } from '@/lib/utils'
 import { StatusBadge, housekeepingTone } from './status-badge'
 
 /**
@@ -12,8 +13,7 @@ import { StatusBadge, housekeepingTone } from './status-badge'
  */
 
 function formatMoney(value: number | null | undefined, currency: string) {
-  if (value == null) return null
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(value)
+  return value == null ? null : formatMoneyBase(value, currency)
 }
 
 function formatDateTime(date: string | null, time: string | null) {

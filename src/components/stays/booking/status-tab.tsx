@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { formatMoney } from '@/lib/utils'
 import { StatusBadge, housekeepingTone } from './status-badge'
 
 /**
@@ -29,11 +30,6 @@ const CANCELLATION_REASONS = [
   { value: 'DUPLICATE', label: 'Duplicate reservation' },
   { value: 'OVERBOOKING', label: 'Overbooking' },
 ] as const
-
-function formatMoney(value: number | null | undefined, currency: string) {
-  if (value == null) return '—'
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(value)
-}
 
 function housekeepingLabel(status: string) {
   return status.charAt(0) + status.slice(1).toLowerCase().replaceAll('_', ' ')
@@ -211,7 +207,9 @@ export function StatusTab({ stay, stayGuests, canEdit, onUpdated }: Props) {
               <Label className="text-[10px] font-semibold text-muted-foreground">Reason *</Label>
               <Select value={reason} onValueChange={(value) => value && setReason(value)}>
                 <SelectTrigger className="h-7 w-full text-xs">
-                  <SelectValue />
+                  <SelectValue>
+                    {CANCELLATION_REASONS.find((option) => option.value === reason)?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {CANCELLATION_REASONS.map((option) => (
