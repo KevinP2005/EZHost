@@ -58,15 +58,15 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
 
   async function handleSave() {
     if (!form.check_in_date || !form.check_out_date) {
-      setFormError('Check-in and check-out dates are required.')
+      setFormError('An- und Abreisedatum sind erforderlich.')
       return
     }
     if (form.check_out_date <= form.check_in_date) {
-      setFormError('Check-out date must be after check-in date.')
+      setFormError('Abreisedatum muss nach dem Anreisedatum liegen.')
       return
     }
     if (Number(form.adults) < 1) {
-      setFormError('At least 1 adult required.')
+      setFormError('Mindestens 1 Erwachsener erforderlich.')
       return
     }
 
@@ -103,11 +103,11 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
         body: JSON.stringify(payload),
       })
       const body = await res.json()
-      if (!res.ok) throw new Error(body.error ?? 'Failed to save.')
-      toast.success('Booking saved.')
+      if (!res.ok) throw new Error(body.error ?? 'Speichern fehlgeschlagen.')
+      toast.success('Buchung gespeichert.')
       onSaved()
     } catch (err: unknown) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save.')
+      setFormError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
     } finally {
       setSaving(false)
     }
@@ -118,11 +118,11 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
       {/* Dates & Times */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Stay</CardTitle>
+          <CardTitle className="text-sm font-medium">Aufenthalt</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Check-in</Label>
+            <Label>Anreise</Label>
             <Input
               type="date"
               value={form.check_in_date}
@@ -130,7 +130,7 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Check-out</Label>
+            <Label>Abreise</Label>
             <Input
               type="date"
               value={form.check_out_date}
@@ -161,7 +161,7 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
           </div>
           {nights > 0 && (
             <p className="col-span-2 text-xs text-muted-foreground">
-              {nights} {nights === 1 ? 'night' : 'nights'}
+              {nights} {nights === 1 ? 'Nacht' : 'Nächte'}
             </p>
           )}
         </CardContent>
@@ -170,11 +170,11 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
       {/* Guests & Room */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Guests & Room</CardTitle>
+          <CardTitle className="text-sm font-medium">Gäste & Zimmer</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Adults</Label>
+            <Label>Erwachsene</Label>
             <Input
               type="number"
               min={1}
@@ -183,7 +183,7 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Children</Label>
+            <Label>Kinder</Label>
             <Input
               type="number"
               min={0}
@@ -193,24 +193,24 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
           </div>
           <div className="space-y-1.5">
             <Label>
-              Room label
+              Zimmerbezeichnung
               <span className="ml-1 text-xs font-normal text-muted-foreground">(optional)</span>
             </Label>
             <Input
               value={form.room_label}
               onChange={(e) => set('room_label', e.target.value)}
-              placeholder={stay.units?.name ?? 'e.g. Deluxe Double Room'}
+              placeholder={stay.units?.name ?? 'z. B. Doppelzimmer Deluxe'}
             />
           </div>
           <div className="space-y-1.5">
             <Label>
-              Booking reference
+              Buchungsreferenz
               <span className="ml-1 text-xs font-normal text-muted-foreground">(optional)</span>
             </Label>
             <Input
               value={form.external_reference}
               onChange={(e) => set('external_reference', e.target.value)}
-              placeholder="e.g. BK-2026-001"
+              placeholder="z. B. BK-2026-001"
             />
           </div>
         </CardContent>
@@ -219,11 +219,11 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
       {/* Pricing */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Pricing</CardTitle>
+          <CardTitle className="text-sm font-medium">Preise</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Price per night</Label>
+            <Label>Preis pro Nacht</Label>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 {form.currency}
@@ -291,7 +291,7 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
       {/* Services */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Services</CardTitle>
+          <CardTitle className="text-sm font-medium">Leistungen</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
@@ -301,12 +301,12 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
                 checked={form.breakfast_included}
                 onCheckedChange={(v) => set('breakfast_included', Boolean(v))}
               />
-              <Label htmlFor="breakfast">Breakfast included</Label>
+              <Label htmlFor="breakfast">Frühstück inbegriffen</Label>
             </div>
             {form.breakfast_included && (
               <div className="ml-6 grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Adults</Label>
+                  <Label className="text-xs">Erwachsene</Label>
                   <Input
                     type="number"
                     min={0}
@@ -315,7 +315,7 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Children</Label>
+                  <Label className="text-xs">Kinder</Label>
                   <Input
                     type="number"
                     min={0}
@@ -334,11 +334,11 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
                 checked={form.local_tax_applicable}
                 onCheckedChange={(v) => set('local_tax_applicable', Boolean(v))}
               />
-              <Label htmlFor="local_tax">Local tax / resort fee</Label>
+              <Label htmlFor="local_tax">Kurtaxe / Ortssteuer</Label>
             </div>
             {form.local_tax_applicable && (
               <div className="ml-6 max-w-[160px] space-y-1.5">
-                <Label className="text-xs">Amount</Label>
+                <Label className="text-xs">Betrag</Label>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                     {form.currency}
@@ -362,31 +362,31 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
       {/* Notes */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Notes</CardTitle>
+          <CardTitle className="text-sm font-medium">Notizen</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
             <Label>
               Gastnotiz
-              <span className="ml-1 text-xs font-normal text-muted-foreground">(visible to guest)</span>
+              <span className="ml-1 text-xs font-normal text-muted-foreground">(für Gast sichtbar)</span>
             </Label>
             <Textarea
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
               rows={3}
-              placeholder="e.g. allergies, special requests…"
+              placeholder="z. B. Allergien, Sonderwünsche…"
             />
           </div>
           <div className="space-y-1.5">
             <Label>
-              Internal note
-              <span className="ml-1 text-xs font-normal text-muted-foreground">(internal only)</span>
+              Interne Notiz
+              <span className="ml-1 text-xs font-normal text-muted-foreground">(nur für Personal)</span>
             </Label>
             <Textarea
               value={form.internal_notes}
               onChange={(e) => set('internal_notes', e.target.value)}
               rows={3}
-              placeholder="Internal use only…"
+              placeholder="Nur intern sichtbar…"
             />
           </div>
         </CardContent>
@@ -401,14 +401,14 @@ export function EditStayForm({ stay, onSaved, onCancel }: EditStayFormProps) {
           {saving ? (
             <>
               <LoaderCircle className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-              Saving…
+              Speichern…
             </>
           ) : (
-            'Save changes'
+            'Änderungen speichern'
           )}
         </Button>
         <Button variant="outline" onClick={onCancel} disabled={saving}>
-          Cancel
+          Abbrechen
         </Button>
       </div>
     </div>

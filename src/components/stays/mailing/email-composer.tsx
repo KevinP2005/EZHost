@@ -101,7 +101,7 @@ export function EmailComposer({
 
   async function handleSend() {
     if (!state.templateId || validRecipients.length === 0 || !state.subject) {
-      toast.error('Please fill in template, recipient and subject.')
+      toast.error('Bitte Template, Empfänger und Betreff ausfüllen.')
       return
     }
 
@@ -126,7 +126,7 @@ export function EmailComposer({
       setState({ ...INITIAL_STATE, recipients: [defaultRecipient] })
       onSent()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send.')
+      toast.error(err instanceof Error ? err.message : 'Fehler beim Senden.')
     } finally {
       setSending(false)
     }
@@ -136,7 +136,7 @@ export function EmailComposer({
     return (
       <div className="rounded-lg border border-dashed border-border px-6 py-8 text-center">
         <p className="text-sm text-muted-foreground">
-          No permission to send emails.
+          Keine Berechtigung zum Versenden von E-Mails.
         </p>
       </div>
     )
@@ -159,7 +159,7 @@ export function EmailComposer({
 
         {/* Recipients */}
         <div className="space-y-1.5">
-          <Label>Recipient</Label>
+          <Label>Empfänger</Label>
           <div className="space-y-2">
             {state.recipients.map((email, index) => (
               <div key={index} className="flex items-center gap-2">
@@ -179,7 +179,7 @@ export function EmailComposer({
                     className="shrink-0 h-8 w-8"
                     onClick={addRecipient}
                     disabled={sending}
-                    aria-label="Add recipient"
+                    aria-label="Weiteren Empfänger hinzufügen"
                   >
                     <Plus className="h-3.5 w-3.5" aria-hidden />
                   </Button>
@@ -191,7 +191,7 @@ export function EmailComposer({
                     className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
                     onClick={() => removeRecipient(index)}
                     disabled={sending}
-                    aria-label="Remove recipient"
+                    aria-label="Empfänger entfernen"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden />
                   </Button>
@@ -203,11 +203,11 @@ export function EmailComposer({
 
         {/* Subject */}
         <div className="space-y-1.5">
-          <Label>Subject</Label>
+          <Label>Betreff</Label>
           <Input
             value={state.subject}
             onChange={(e) => update('subject', e.target.value)}
-            placeholder={state.templateId ? 'Subject' : 'Select a template first…'}
+            placeholder={state.templateId ? 'Betreff' : 'Zuerst ein Template wählen…'}
             disabled={sending || !state.templateId}
           />
         </div>
@@ -238,7 +238,7 @@ export function EmailComposer({
         {/* Message / Note */}
         <div className="space-y-1.5">
           <Label>
-            {isBlank ? 'Message' : 'Personal note'}
+            {isBlank ? 'Nachricht' : 'Persönliche Notiz'}
             {!isBlank && (
               <span className="ml-1.5 text-xs font-normal text-muted-foreground">(optional)</span>
             )}
@@ -253,7 +253,7 @@ export function EmailComposer({
               <Textarea
                 value={state.message}
                 onChange={(e) => update('message', e.target.value)}
-                placeholder="Optional personal text appended to the template…"
+                placeholder="Optionaler persönlicher Text, der an das Template angehängt wird…"
                 rows={3}
                 disabled={sending}
               />
@@ -262,7 +262,7 @@ export function EmailComposer({
             <Textarea
               value={state.message}
               onChange={(e) => update('message', e.target.value)}
-              placeholder={isBlank ? 'Email body…' : 'Select a template first…'}
+              placeholder={isBlank ? 'E-Mail-Text…' : 'Zuerst ein Template wählen…'}
               rows={5}
               disabled={sending || !state.templateId}
             />

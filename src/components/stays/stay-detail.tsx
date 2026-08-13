@@ -78,7 +78,7 @@ export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Edit Booking</h2>
+          <h2 className="text-base font-semibold">Buchung bearbeiten</h2>
         </div>
         <EditStayForm
           stay={stay}
@@ -115,7 +115,7 @@ export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true
       {!showHeader && canEdit && (
         <div className="flex justify-end">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsEditing(true)}>
-            <Pencil className="h-3.5 w-3.5" /> Edit
+            <Pencil className="h-3.5 w-3.5" /> Bearbeiten
           </Button>
         </div>
       )}

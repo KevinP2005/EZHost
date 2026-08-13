@@ -27,7 +27,7 @@ export function TemplateSelector({ templates, value, onChange, disabled }: Templ
         disabled={disabled}
       >
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select template…">
+          <SelectValue placeholder="Template auswählen…">
             {value
               ? ([...templates, BLANK_TEMPLATE].find((t) => t.id === value)?.name ?? value)
               : undefined}

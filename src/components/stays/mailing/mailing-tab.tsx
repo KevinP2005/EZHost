@@ -25,12 +25,12 @@ export function MailingTab({ stayId, hotelName }: MailingTabProps) {
       setError(null)
       try {
         const res = await fetch(`/api/stays/${stayId}/emails`, { signal })
-        if (!res.ok) throw new Error('Email history could not be loaded.')
+        if (!res.ok) throw new Error('E-Mail-Verlauf konnte nicht geladen werden.')
         const body: MailingTabData = await res.json()
         setData(body)
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
-        setError(err instanceof Error ? err.message : 'Unknown error.')
+        setError(err instanceof Error ? err.message : 'Unbekannter Fehler.')
         setData(null)
       } finally {
         if (!signal?.aborted) setLoading(false)
