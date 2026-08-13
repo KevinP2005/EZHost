@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns'
 import { Eye, FileText, RefreshCw } from 'lucide-react'
 
 import { formatMoney as formatMoneyBase } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { StatusBadge, housekeepingTone } from './status-badge'
 
 /**
@@ -85,10 +86,44 @@ export function ReservationDetails({ stay, stayGuests }: Props) {
       <Row label="Booker">
         {bookerName ? (
           <span className="inline-flex items-center gap-2">
-            <FileText className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label="Registration"
+                    className="text-muted-foreground hover:text-foreground"
+                  />
+                }
+              >
+                <FileText className="h-3.5 w-3.5" aria-hidden />
+              </TooltipTrigger>
+              <TooltipContent>Registration</TooltipContent>
+            </Tooltip>
+
             <span className="underline underline-offset-2">{bookerName}</span>
-            <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-            <FileText className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+
+            <Tooltip>
+              <TooltipTrigger render={<span className="text-muted-foreground" />}>
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+              </TooltipTrigger>
+              <TooltipContent>Returning</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label="Billing"
+                    className="text-muted-foreground hover:text-foreground"
+                  />
+                }
+              >
+                <FileText className="h-3.5 w-3.5" aria-hidden />
+              </TooltipTrigger>
+              <TooltipContent>Billing</TooltipContent>
+            </Tooltip>
           </span>
         ) : null}
       </Row>
