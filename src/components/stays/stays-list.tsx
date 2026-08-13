@@ -78,6 +78,13 @@ export function StaysList({ stays, properties, currentFilters, canEdit }: Props)
     router.push(`/dashboard/stays?${params.toString()}`)
   }
 
+  function openStayPanel(stayId: string) {
+    const params = new URLSearchParams()
+    if (currentFilters.status) params.set('status', currentFilters.status)
+    if (currentFilters.property) params.set('property', currentFilters.property)
+    params.set('stay', stayId)
+    router.push(`/dashboard/stays?${params.toString()}`, { scroll: false })
+  }
 
   return (
     <div className="space-y-4">
@@ -152,7 +159,7 @@ export function StaysList({ stays, properties, currentFilters, canEdit }: Props)
                 <tr
                   key={stay.id}
                   className="border-b last:border-0 hover:bg-muted/20 cursor-pointer"
-                  onClick={() => router.push(`/dashboard/stays/${stay.id}`)}
+                  onClick={() => openStayPanel(stay.id)}
                 >
                   <td className="px-4 py-3 font-medium">
                     {stay.guests ? `${stay.guests.first_name} ${stay.guests.last_name}` : <span className="text-muted-foreground">—</span>}

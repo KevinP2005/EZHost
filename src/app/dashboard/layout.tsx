@@ -2,6 +2,7 @@ import { requireAuth } from '@/lib/auth'
 import { Sidebar } from '@/components/layout/sidebar'
 import { TopBar } from '@/components/layout/top-bar'
 import { getTopBarProperties } from '@/lib/services/properties'
+import { StayDetailsPanel } from '@/components/stays/stay-details-panel'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireAuth()
@@ -16,6 +17,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           {children}
         </main>
       </div>
+      <StayDetailsPanel />
     </div>
   )
 }
