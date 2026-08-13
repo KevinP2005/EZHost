@@ -1258,7 +1258,7 @@ export function GuestDetailsStep({
       } else {
         toast.success(bookingStatus === 'CONFIRMED' ? 'Booking saved.' : 'Offer saved.')
       }
-      router.push(`/dashboard/stays?stay=${encodeURIComponent(payload.id)}`)
+      router.push(`/dashboard/stays/${encodeURIComponent(payload.id)}`)
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Something went wrong.')
     } finally {
