@@ -11,33 +11,18 @@ import { toast } from 'sonner'
 import { EditStayForm } from './edit-stay-form'
 
 const statusColors: Record<string, string> = {
-  BOOKED: 'text-green-600',
-  CHECKED_IN: 'text-emerald-600',
-  CHECKED_OUT: 'text-gray-400',
-  CANCELLED: 'text-red-500',
-  NO_SHOW: 'text-orange-500',
-}
-
-const statusLabels: Record<string, string> = {
-  BOOKED: 'Booked',
-  CHECKED_IN: 'Checked In',
-  CHECKED_OUT: 'Checked Out',
-  CANCELLED: 'Cancelled',
-  NO_SHOW: 'No Show',
+  BOOKED: 'bg-blue-50 text-blue-700',
+  CHECKED_IN: 'bg-green-50 text-green-700',
+  CHECKED_OUT: 'bg-gray-50 text-gray-500',
+  CANCELLED: 'bg-red-50 text-red-600',
+  NO_SHOW: 'bg-orange-50 text-orange-600',
 }
 
 const regColors: Record<string, string> = {
-  MISSING: 'text-red-500',
-  PARTIAL: 'text-amber-600',
-  COMPLETE: 'text-green-600',
-  NOT_REQUIRED: 'text-gray-400',
-}
-
-const regLabels: Record<string, string> = {
-  MISSING: 'Missing',
-  PARTIAL: 'Partial',
-  COMPLETE: 'Complete',
-  NOT_REQUIRED: 'Not Required',
+  MISSING: 'bg-red-50 text-red-600',
+  PARTIAL: 'bg-yellow-50 text-yellow-600',
+  COMPLETE: 'bg-green-50 text-green-600',
+  NOT_REQUIRED: 'bg-gray-50 text-gray-500',
 }
 
 interface Props {
@@ -116,8 +101,8 @@ export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true
           <h1 className="text-xl font-semibold">
             {guest ? `${guest.first_name} ${guest.last_name}` : 'Stay Details'}
           </h1>
-          <span className={`text-xs px-2 py-0.5 rounded ${statusColors[stay.status] ?? 'text-gray-400'}`}>
-            {statusLabels[stay.status] ?? stay.status}
+          <span className={`text-xs px-2 py-0.5 rounded ${statusColors[stay.status] ?? 'bg-gray-50'}`}>
+            {stay.status.replace('_', ' ')}
           </span>
           {canEdit && (
             <Button variant="ghost" size="sm" className="ml-auto gap-1.5" onClick={() => setIsEditing(true)}>
@@ -182,8 +167,8 @@ export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Registration</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2">
-              <span className={`text-xs px-1.5 py-0.5 rounded ${regColors[stay.registration_status] ?? 'text-gray-400'}`}>
-                {regLabels[stay.registration_status] ?? stay.registration_status}
+              <span className={`text-xs px-1.5 py-0.5 rounded ${regColors[stay.registration_status] ?? ''}`}>
+                {stay.registration_status.replace('_', ' ')}
               </span>
             </div>
             {canEdit && (
@@ -194,9 +179,9 @@ export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true
                     <button
                       key={s}
                       onClick={() => updateRegistration(s)}
-                      className={`text-xs px-2 py-1 rounded ${regColors[s] ?? 'text-gray-400'} hover:opacity-80`}
+                      className={`text-xs px-2 py-1 rounded border ${regColors[s]} hover:opacity-80 border-current/20`}
                     >
-                      {regLabels[s] ?? s}
+                      {s.replace('_', ' ')}
                     </button>
                   ))}
               </div>

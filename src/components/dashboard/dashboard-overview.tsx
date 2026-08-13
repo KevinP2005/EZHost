@@ -175,21 +175,21 @@ export function DashboardOverview({ overview }: Props) {
 
 function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, string> = {
-    BOOKED: 'text-green-600',
-    CHECKED_IN: 'text-emerald-600',
-    CHECKED_OUT: 'text-gray-400',
-    CANCELLED: 'text-red-500',
-    NO_SHOW: 'text-orange-500',
+    BOOKED: 'bg-blue-50 text-blue-700 border-blue-200',
+    CHECKED_IN: 'bg-green-50 text-green-700 border-green-200',
+    CHECKED_OUT: 'bg-gray-50 text-gray-500 border-gray-200',
+    CANCELLED: 'bg-red-50 text-red-600 border-red-200',
+    NO_SHOW: 'bg-orange-50 text-orange-600 border-orange-200',
   }
   const labels: Record<string, string> = {
     BOOKED: 'Booked',
-    CHECKED_IN: 'Checked In',
-    CHECKED_OUT: 'Checked Out',
+    CHECKED_IN: 'In',
+    CHECKED_OUT: 'Out',
     CANCELLED: 'Cancelled',
     NO_SHOW: 'No Show',
   }
   return (
-    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${variants[status] ?? 'text-gray-400'}`}>
+    <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${variants[status] ?? 'bg-gray-50 text-gray-500'}`}>
       {labels[status] ?? status}
     </span>
   )

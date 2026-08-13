@@ -18,11 +18,11 @@ interface StayDetailsPayload {
 }
 
 const statusClasses: Record<string, string> = {
-  BOOKED: 'text-green-400',
-  CHECKED_IN: 'text-emerald-400',
-  CHECKED_OUT: 'text-slate-300',
-  CANCELLED: 'text-rose-400',
-  NO_SHOW: 'text-orange-400',
+  BOOKED: 'border-amber-400/25 bg-amber-500/15 text-amber-400',
+  CHECKED_IN: 'border-emerald-400/25 bg-emerald-500/15 text-emerald-400',
+  CHECKED_OUT: 'border-slate-400/25 bg-slate-500/15 text-slate-300',
+  CANCELLED: 'border-rose-400/25 bg-rose-500/15 text-rose-400',
+  NO_SHOW: 'border-orange-400/25 bg-orange-500/15 text-orange-400',
 }
 
 const tabs = ['Overview', 'Mailing', 'Items', 'Group', 'Activity Log', 'Billing'] as const
@@ -106,7 +106,7 @@ export function StayDetailsPanel() {
                   {loading ? 'Loading stay...' : getGuestName(payload)}
                 </DialogTitle>
                 {status && (
-                  <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${statusClasses[status] ?? 'text-muted-foreground'}`}>
+                  <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${statusClasses[status] ?? 'border-border bg-muted text-muted-foreground'}`}>
                     {formatStatus(status)}
                   </span>
                 )}

@@ -11,23 +11,23 @@ import { toast } from 'sonner'
 type HousekeepingStatus = 'CLEAN' | 'DIRTY' | 'INSPECTED' | 'OUT_OF_SERVICE'
 
 const statusConfig: Record<HousekeepingStatus, { label: string; color: string; icon: React.ElementType }> = {
-  CLEAN: { label: 'Clean', color: 'text-green-600 border-green-300', icon: CheckCircle },
-  DIRTY: { label: 'Dirty', color: 'text-red-500 border-red-300', icon: Circle },
-  INSPECTED: { label: 'Inspected', color: 'text-blue-600 border-blue-300', icon: CheckCircle },
-  OUT_OF_SERVICE: { label: 'Out of Service', color: 'text-gray-400 border-gray-300', icon: XCircle },
+  CLEAN: { label: 'Clean', color: 'text-green-600 bg-green-50 border-green-200', icon: CheckCircle },
+  DIRTY: { label: 'Dirty', color: 'text-red-600 bg-red-50 border-red-200', icon: Circle },
+  INSPECTED: { label: 'Inspected', color: 'text-blue-600 bg-blue-50 border-blue-200', icon: CheckCircle },
+  OUT_OF_SERVICE: { label: 'Out of Service', color: 'text-gray-500 bg-gray-50 border-gray-200', icon: XCircle },
 }
 
 const taskPriorityColors: Record<string, string> = {
-  HIGH: 'text-red-500 border-red-300',
-  NORMAL: 'text-blue-600 border-blue-300',
-  LOW: 'text-gray-400 border-gray-300',
+  HIGH: 'bg-red-50 text-red-600 border-red-200',
+  NORMAL: 'bg-blue-50 text-blue-600 border-blue-200',
+  LOW: 'bg-gray-50 text-gray-500 border-gray-200',
 }
 
 const taskStatusColors: Record<string, string> = {
-  OPEN: 'text-orange-500 border-orange-300',
-  IN_PROGRESS: 'text-blue-600 border-blue-300',
-  DONE: 'text-green-600 border-green-300',
-  BLOCKED: 'text-red-500 border-red-300',
+  OPEN: 'bg-orange-50 text-orange-600',
+  IN_PROGRESS: 'bg-blue-50 text-blue-600',
+  DONE: 'bg-green-50 text-green-600',
+  BLOCKED: 'bg-red-50 text-red-600',
 }
 
 interface Props {
@@ -172,11 +172,11 @@ export function HousekeepingBoard({ units, tasks, properties, canEdit }: Props) 
                         {task.description && <p className="text-xs text-muted-foreground mt-1">{task.description}</p>}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className={`text-xs px-1.5 py-0.5 rounded border ${taskPriorityColors[task.priority] ?? 'text-gray-400 border-gray-300'}`}>
-                          {task.priority === 'HIGH' ? 'High' : task.priority === 'NORMAL' ? 'Normal' : 'Low'}
+                        <span className={`text-xs px-1.5 py-0.5 rounded border ${taskPriorityColors[task.priority]}`}>
+                          {task.priority}
                         </span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded border ${taskStatusColors[task.status] ?? 'text-gray-400 border-gray-300'}`}>
-                          {task.status === 'IN_PROGRESS' ? 'In Progress' : task.status === 'OPEN' ? 'Open' : task.status === 'DONE' ? 'Done' : 'Blocked'}
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${taskStatusColors[task.status]}`}>
+                          {task.status.replace('_', ' ')}
                         </span>
                         {canEdit && task.status !== 'DONE' && (
                           <button
