@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { EditStayForm } from './edit-stay-form'
 
 const statusColors: Record<string, string> = {
-  BOOKED: 'bg-green-100 text-green-800',
+  BOOKED: 'bg-green-100 text-green-600',
   CHECKED_IN: 'bg-green-50 text-green-700',
   CHECKED_OUT: 'bg-blue-50 text-blue-700',
   CANCELLED: 'bg-red-50 text-red-600',
