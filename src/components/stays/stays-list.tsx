@@ -19,10 +19,10 @@ const statusOptions = [
 ]
 
 const regColors: Record<string, string> = {
-  MISSING: 'text-red-500 border-red-300',
-  PARTIAL: 'text-amber-600 border-amber-300',
-  COMPLETE: 'text-green-600 border-green-300',
-  NOT_REQUIRED: 'text-gray-400 border-gray-300',
+  MISSING: 'text-red-500',
+  PARTIAL: 'text-amber-600',
+  COMPLETE: 'text-green-600',
+  NOT_REQUIRED: 'text-gray-400',
 }
 
 const regLabels: Record<string, string> = {
@@ -33,11 +33,11 @@ const regLabels: Record<string, string> = {
 }
 
 const statusColors: Record<string, string> = {
-  BOOKED: 'text-green-600 border-green-300',
-  CHECKED_IN: 'text-emerald-600 border-emerald-300',
-  CHECKED_OUT: 'text-gray-400 border-gray-300',
-  CANCELLED: 'text-red-500 border-red-300',
-  NO_SHOW: 'text-orange-500 border-orange-300',
+  BOOKED: 'text-green-600',
+  CHECKED_IN: 'text-emerald-600',
+  CHECKED_OUT: 'text-gray-400',
+  CANCELLED: 'text-red-500',
+  NO_SHOW: 'text-orange-500',
 }
 
 const statusLabels: Record<string, string> = {
@@ -168,12 +168,12 @@ export function StaysList({ stays, properties, currentFilters, canEdit }: Props)
                   <td className="px-4 py-3 text-muted-foreground">{format(parseISO(stay.check_in_date), 'd MMM yyyy')}</td>
                   <td className="px-4 py-3 text-muted-foreground">{format(parseISO(stay.check_out_date), 'd MMM yyyy')}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-1.5 py-0.5 rounded border ${statusColors[stay.status] ?? 'text-gray-400 border-gray-300'}`}>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${statusColors[stay.status] ?? 'text-gray-400'}`}>
                       {statusLabels[stay.status] ?? stay.status}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-1.5 py-0.5 rounded border ${regColors[stay.registration_status] ?? 'text-gray-400 border-gray-300'}`}>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${regColors[stay.registration_status] ?? 'text-gray-400'}`}>
                       {regLabels[stay.registration_status] ?? stay.registration_status}
                     </span>
                   </td>

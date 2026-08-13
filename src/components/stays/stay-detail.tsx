@@ -10,11 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 
 const statusColors: Record<string, string> = {
-  BOOKED: 'text-green-600 border-green-300',
-  CHECKED_IN: 'text-emerald-600 border-emerald-300',
-  CHECKED_OUT: 'text-gray-400 border-gray-300',
-  CANCELLED: 'text-red-500 border-red-300',
-  NO_SHOW: 'text-orange-500 border-orange-300',
+  BOOKED: 'text-green-600',
+  CHECKED_IN: 'text-emerald-600',
+  CHECKED_OUT: 'text-gray-400',
+  CANCELLED: 'text-red-500',
+  NO_SHOW: 'text-orange-500',
 }
 
 const statusLabels: Record<string, string> = {
@@ -26,10 +26,10 @@ const statusLabels: Record<string, string> = {
 }
 
 const regColors: Record<string, string> = {
-  MISSING: 'text-red-500 border-red-300',
-  PARTIAL: 'text-amber-600 border-amber-300',
-  COMPLETE: 'text-green-600 border-green-300',
-  NOT_REQUIRED: 'text-gray-400 border-gray-300',
+  MISSING: 'text-red-500',
+  PARTIAL: 'text-amber-600',
+  COMPLETE: 'text-green-600',
+  NOT_REQUIRED: 'text-gray-400',
 }
 
 const regLabels: Record<string, string> = {
@@ -99,7 +99,7 @@ export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true
           <h1 className="text-xl font-semibold">
             {guest ? `${guest.first_name} ${guest.last_name}` : 'Stay Details'}
           </h1>
-          <span className={`text-xs px-2 py-0.5 rounded border ${statusColors[stay.status] ?? 'text-gray-400 border-gray-300'}`}>
+          <span className={`text-xs px-2 py-0.5 rounded ${statusColors[stay.status] ?? 'text-gray-400'}`}>
             {statusLabels[stay.status] ?? stay.status}
           </span>
         </div>
@@ -152,7 +152,7 @@ export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Registration</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2">
-              <span className={`text-xs px-1.5 py-0.5 rounded border ${regColors[stay.registration_status] ?? 'text-gray-400 border-gray-300'}`}>
+              <span className={`text-xs px-1.5 py-0.5 rounded ${regColors[stay.registration_status] ?? 'text-gray-400'}`}>
                 {regLabels[stay.registration_status] ?? stay.registration_status}
               </span>
             </div>
@@ -164,7 +164,7 @@ export function StayDetail({ stay, stayGuests, notes, canEdit, showHeader = true
                     <button
                       key={s}
                       onClick={() => updateRegistration(s)}
-                      className={`text-xs px-2 py-1 rounded border ${regColors[s] ?? 'text-gray-400 border-gray-300'} hover:opacity-80`}
+                      className={`text-xs px-2 py-1 rounded ${regColors[s] ?? 'text-gray-400'} hover:opacity-80`}
                     >
                       {regLabels[s] ?? s}
                     </button>
