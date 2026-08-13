@@ -27,7 +27,7 @@ const regColors: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   BOOKED: 'bg-green-100 text-green-600 border-green-300',
-  CHECKED_IN: 'bg-green-50 text-green-700 border-green-200',
+  CHECKED_IN: 'bg-orange-50 text-orange-600 border-orange-200',
   CHECKED_OUT: 'bg-blue-50 text-blue-700 border-blue-200',
   CANCELLED: 'bg-red-50 text-red-600 border-red-200',
   NO_SHOW: 'bg-orange-50 text-orange-600 border-orange-200',

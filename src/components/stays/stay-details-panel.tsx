@@ -19,7 +19,7 @@ interface StayDetailsPayload {
 
 const statusClasses: Record<string, string> = {
   BOOKED: 'border-green-600/30 bg-green-600/20 text-green-500',
-  CHECKED_IN: 'border-emerald-400/25 bg-emerald-500/15 text-emerald-400',
+  CHECKED_IN: 'border-orange-400/25 bg-orange-500/15 text-orange-400',
   CHECKED_OUT: 'border-amber-400/25 bg-amber-500/15 text-amber-400',
   CANCELLED: 'border-rose-400/25 bg-rose-500/15 text-rose-400',
   NO_SHOW: 'border-orange-400/25 bg-orange-500/15 text-orange-400',
