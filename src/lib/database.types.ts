@@ -23,7 +23,15 @@ export type TaskStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'BLOCKED'
 export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH'
 export type Department = 'RECEPTION' | 'HOUSEKEEPING' | 'KITCHEN' | 'MANAGEMENT' | 'GENERAL'
 export type NoteVisibility = 'INTERNAL' | 'MANAGEMENT_ONLY'
-export type EmailType = 'BOOKING_CONFIRMATION' | 'OFFER'
+export type EmailType =
+  | 'BOOKING_CONFIRMATION'
+  | 'OFFER'
+  | 'ONLINE_CHECK_IN'
+  | 'PRE_ARRIVAL'
+  | 'AFTER_CHECK_IN'
+  | 'AFTER_CHECK_OUT'
+  | 'CANCELLATION'
+  | 'MANUAL'
 export type EmailDeliveryStatus = 'SENT' | 'FAILED'
 
 export interface Organization {

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StayDetail } from '@/components/stays/stay-detail'
+import { MailingTab } from '@/components/stays/mailing/mailing-tab'
 
 interface StayDetailsPayload {
   stay: any
@@ -165,7 +166,16 @@ export function StayDetailsPanel() {
                 )}
               </TabsContent>
 
-              {tabs.slice(1).map((tab) => {
+              <TabsContent value="mailing">
+                {!loading && !error && payload && stayId && (
+                  <MailingTab
+                    stayId={stayId}
+                    hotelName={payload.stay?.properties?.name ?? ''}
+                  />
+                )}
+              </TabsContent>
+
+              {(['Items', 'Group', 'Activity Log', 'Billing'] as const).map((tab) => {
                 const value = tab.toLowerCase().replaceAll(' ', '-')
                 return (
                   <TabsContent key={tab} value={value}>
