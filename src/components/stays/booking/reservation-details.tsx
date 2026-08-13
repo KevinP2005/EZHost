@@ -1,7 +1,7 @@
 'use client'
 
 import { format, parseISO } from 'date-fns'
-import { ArrowLeft, Eye, FileText, RefreshCw } from 'lucide-react'
+import { Eye, FileText, RefreshCw } from 'lucide-react'
 
 import { formatMoney as formatMoneyBase } from '@/lib/utils'
 import { StatusBadge, housekeepingTone } from './status-badge'
@@ -127,9 +127,6 @@ export function ReservationDetails({ stay, stayGuests }: Props) {
                 tone={housekeepingTone(stay.units.housekeeping_status)}
               />
             )}
-            <span className="inline-flex h-4 w-4 rotate-90 items-center justify-center rounded-full border border-muted-foreground/60">
-              <ArrowLeft className="h-2.5 w-2.5" aria-hidden />
-            </span>
           </span>
         ) : null}
       </Row>
