@@ -5,7 +5,7 @@ import { de } from 'date-fns/locale'
 import type { EmailMessage } from '@/lib/email/mailing.types'
 
 const TYPE_LABELS: Record<string, string> = {
-  BOOKING_CONFIRMATION: 'Buchungsbestätigung',
+  BOOKING_CONFIRMATION: 'Booking Confirmation',
   OFFER: 'Angebot',
   ONLINE_CHECK_IN: 'Online Check-in',
   PRE_ARRIVAL: 'Pre-Arrival',

@@ -10,7 +10,7 @@ export function MessageHistory({ messages }: MessageHistoryProps) {
   return (
     <section>
       <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Verlauf
+        History
       </h3>
 
       {messages.length === 0 ? (

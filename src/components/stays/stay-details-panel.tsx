@@ -18,11 +18,11 @@ interface StayDetailsPayload {
 }
 
 const statusClasses: Record<string, string> = {
-  BOOKED: 'border-green-600/30 bg-green-600/20 text-green-500',
-  CHECKED_IN: 'border-orange-400/25 bg-orange-500/15 text-orange-400',
-  CHECKED_OUT: 'border-amber-400/25 bg-amber-500/15 text-amber-400',
-  CANCELLED: 'border-rose-400/25 bg-rose-500/15 text-rose-400',
-  NO_SHOW: 'border-orange-400/25 bg-orange-500/15 text-orange-400',
+  BOOKED: 'border-green-300 bg-green-100 text-green-600',
+  CHECKED_IN: 'border-orange-200 bg-orange-50 text-orange-600',
+  CHECKED_OUT: 'border-blue-200 bg-blue-50 text-blue-700',
+  CANCELLED: 'border-red-200 bg-red-50 text-red-600',
+  NO_SHOW: 'border-orange-200 bg-orange-50 text-orange-600',
 }
 
 const tabs = ['Overview', 'Mailing', 'Items', 'Group', 'Activity Log', 'Billing'] as const
@@ -96,7 +96,7 @@ export function StayDetailsPanel() {
     <Dialog open={Boolean(stayId)} onOpenChange={(open) => !open && closePanel()}>
       <DialogContent
         showCloseButton={false}
-        className="dark inset-y-0 right-0 left-auto top-0 h-dvh w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-none border-l border-border bg-popover p-0 text-popover-foreground shadow-2xl duration-300 sm:max-w-[min(94vw,1120px)] data-open:slide-in-from-right-full data-closed:slide-out-to-right-full data-open:fade-in-0 data-closed:fade-out-0 data-open:zoom-in-100 data-closed:zoom-out-100"
+        className="inset-y-0 right-0 left-auto top-0 h-dvh w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-none border-l border-border bg-popover p-0 text-popover-foreground shadow-2xl duration-300 sm:max-w-[min(94vw,1120px)] data-open:slide-in-from-right-full data-closed:slide-out-to-right-full data-open:fade-in-0 data-closed:fade-out-0 data-open:zoom-in-100 data-closed:zoom-out-100"
       >
         <div className="flex min-h-0 flex-1 flex-col">
           <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 sm:px-7">
