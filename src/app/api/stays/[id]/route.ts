@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server'
 import { getProfile } from '@/lib/auth'
-import { updateStay, checkInStay, checkOutStay, updateRegistrationStatus } from '@/lib/services/stays'
+import { updateStay, checkInStay, checkOutStay, updateRegistrationStatus, cancelStay } from '@/lib/services/stays'
 import { updateStaySchema } from '@/lib/schemas/stays'
 import { assertCanAccessProperty } from '@/lib/services/properties'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const patchSchema = z.object({
-  action: z.enum(['update', 'check_in', 'check_out', 'update_registration']).optional(),
+  action: z.enum(['update', 'check_in', 'check_out', 'update_registration', 'cancel']).optional(),
   registration_status: z.enum(['MISSING', 'PARTIAL', 'COMPLETE', 'NOT_REQUIRED']).optional(),
+  cancellation_reason: z.enum(['NO_SHOW', 'GUEST_REQUEST', 'DUPLICATE', 'OVERBOOKING']).optional(),
+  cancellation_details: z.string().max(500).optional(),
+  apply_fee: z.boolean().optional(),
+  notify_guest: z.boolean().optional(),
 }).passthrough()
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -23,7 +27,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       *,
       units(id, name, unit_type, housekeeping_status),
       properties(id, name),
-      guests!primary_guest_id(id, first_name, last_name, email, phone, nationality, document_type, document_number, date_of_birth)
+      guests!primary_guest_id(id, first_name, last_name, email, phone, nationality, document_type, document_number, date_of_birth, company)
     `)
     .eq('id', id)
     .single()
@@ -75,7 +79,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   try {
-    const { action, registration_status, ...rest } = parsed.data
+    const {
+      action,
+      registration_status,
+      cancellation_reason,
+      cancellation_details,
+      // Accepted by the cancellation form but not yet persisted: there is no
+      // cancellation-fee column, and guest emails are sent explicitly via the composer.
+      apply_fee: _applyFee,
+      notify_guest: _notifyGuest,
+      ...rest
+    } = parsed.data
     const supabase = await createClient()
     const { data: stay, error } = await supabase
       .from('stays')
@@ -99,6 +113,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     } else if (action === 'update_registration' && registration_status) {
       await updateRegistrationStatus(id, orgId, profile.id, registration_status)
       return NextResponse.json({ ok: true })
+    } else if (action === 'cancel') {
+      if (!cancellation_reason) {
+        return NextResponse.json({ error: 'Cancellation reason is required' }, { status: 400 })
+      }
+      result = await cancelStay(id, orgId, profile.id, cancellation_reason, cancellation_details)
     } else {
       const parsed = updateStaySchema.safeParse(rest)
       if (!parsed.success) {

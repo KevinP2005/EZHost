@@ -127,6 +127,44 @@ export async function updateStay(
   return data
 }
 
+export async function cancelStay(
+  stayId: string,
+  organizationId: string,
+  profileId: string,
+  reason: string,
+  details?: string
+): Promise<Stay> {
+  const supabase = await createClient()
+  const status: StayStatus = reason === 'NO_SHOW' ? 'NO_SHOW' : 'CANCELLED'
+
+  // Free-text details stay in internal_notes; only the reason code is logged.
+  let internalNotes: string | undefined
+  if (details) {
+    const { data: current } = await supabase
+      .from('stays')
+      .select('internal_notes')
+      .eq('id', stayId)
+      .eq('organization_id', organizationId)
+      .single()
+
+    const note = `Cancellation (${reason}): ${details}`
+    internalNotes = current?.internal_notes ? `${current.internal_notes}\n${note}` : note
+  }
+
+  const { data, error } = await supabase
+    .from('stays')
+    .update({ status, ...(internalNotes !== undefined ? { internal_notes: internalNotes } : {}) })
+    .eq('id', stayId)
+    .eq('organization_id', organizationId)
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  await createActivityLog(organizationId, profileId, 'stay_cancelled', 'stay', stayId, { reason }, data.property_id)
+  return data
+}
+
 export async function checkInStay(stayId: string, organizationId: string, profileId: string): Promise<Stay> {
   const supabase = await createClient()
   const { data, error } = await supabase
