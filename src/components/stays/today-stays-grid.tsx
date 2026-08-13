@@ -1,7 +1,7 @@
 import { BedDouble, CalendarClock, Users } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { StayPanelLink } from '@/components/stays/stay-panel-link'
+import { StayLink } from '@/components/stays/stay-link'
 
 export interface TodayStay {
   id: string
@@ -70,7 +70,7 @@ export function TodayStaysGrid({ stays }: { stays: TodayStay[] }) {
         const unitStatus = unitStatusConfig[stay.unitStatus]
 
         return (
-          <StayPanelLink
+          <StayLink
             key={stay.id}
             stayId={stay.id}
             className="group flex min-h-52 flex-col rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
@@ -111,7 +111,7 @@ export function TodayStaysGrid({ stays }: { stays: TodayStay[] }) {
               </span>
               <span className="font-semibold text-primary transition-colors group-hover:text-primary/80">View stay</span>
             </div>
-          </StayPanelLink>
+          </StayLink>
         )
       })}
     </div>

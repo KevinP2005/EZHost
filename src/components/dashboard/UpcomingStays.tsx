@@ -3,7 +3,7 @@
 import { CalendarDays, Home, Users } from 'lucide-react'
 
 import type { Stay } from './types'
-import { StayPanelLink } from '@/components/stays/stay-panel-link'
+import { StayLink } from '@/components/stays/stay-link'
 
 const STATUS_CONFIG: Record<Stay['status'], { label: string; className: string }> = {
   confirmed: {
@@ -58,7 +58,7 @@ export default function UpcomingStays({ stays }: { stays: Stay[] }) {
             const status = STATUS_CONFIG[stay.status]
 
             return (
-              <StayPanelLink
+              <StayLink
                 key={stay.id}
                 stayId={stay.id}
                 className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/50"
@@ -94,7 +94,7 @@ export default function UpcomingStays({ stays }: { stays: Stay[] }) {
                 <span className={`w-24 shrink-0 rounded-md px-2 py-0.5 text-center text-[10.5px] font-bold ${status.className}`}>
                   {status.label}
                 </span>
-              </StayPanelLink>
+              </StayLink>
             )
           })}
         </div>
