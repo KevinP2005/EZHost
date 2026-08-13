@@ -19,18 +19,33 @@ const statusOptions = [
 ]
 
 const regColors: Record<string, string> = {
-  MISSING: 'bg-red-50 text-red-600 border-red-200',
-  PARTIAL: 'bg-yellow-50 text-yellow-600 border-yellow-200',
-  COMPLETE: 'bg-green-50 text-green-600 border-green-200',
-  NOT_REQUIRED: 'bg-gray-50 text-gray-500 border-gray-200',
+  MISSING: 'text-red-500 border-red-300',
+  PARTIAL: 'text-amber-600 border-amber-300',
+  COMPLETE: 'text-green-600 border-green-300',
+  NOT_REQUIRED: 'text-gray-400 border-gray-300',
+}
+
+const regLabels: Record<string, string> = {
+  MISSING: 'Missing',
+  PARTIAL: 'Partial',
+  COMPLETE: 'Complete',
+  NOT_REQUIRED: 'Not Required',
 }
 
 const statusColors: Record<string, string> = {
-  BOOKED: 'bg-blue-50 text-blue-700 border-blue-200',
-  CHECKED_IN: 'bg-green-50 text-green-700 border-green-200',
-  CHECKED_OUT: 'bg-gray-50 text-gray-500 border-gray-200',
-  CANCELLED: 'bg-red-50 text-red-600 border-red-200',
-  NO_SHOW: 'bg-orange-50 text-orange-600 border-orange-200',
+  BOOKED: 'text-green-600 border-green-300',
+  CHECKED_IN: 'text-emerald-600 border-emerald-300',
+  CHECKED_OUT: 'text-gray-400 border-gray-300',
+  CANCELLED: 'text-red-500 border-red-300',
+  NO_SHOW: 'text-orange-500 border-orange-300',
+}
+
+const statusLabels: Record<string, string> = {
+  BOOKED: 'Booked',
+  CHECKED_IN: 'Checked In',
+  CHECKED_OUT: 'Checked Out',
+  CANCELLED: 'Cancelled',
+  NO_SHOW: 'No Show',
 }
 
 interface Props {
@@ -153,13 +168,13 @@ export function StaysList({ stays, properties, currentFilters, canEdit }: Props)
                   <td className="px-4 py-3 text-muted-foreground">{format(parseISO(stay.check_in_date), 'd MMM yyyy')}</td>
                   <td className="px-4 py-3 text-muted-foreground">{format(parseISO(stay.check_out_date), 'd MMM yyyy')}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-1.5 py-0.5 rounded border ${statusColors[stay.status] ?? ''}`}>
-                      {stay.status.replace('_', ' ')}
+                    <span className={`text-xs px-1.5 py-0.5 rounded border ${statusColors[stay.status] ?? 'text-gray-400 border-gray-300'}`}>
+                      {statusLabels[stay.status] ?? stay.status}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-1.5 py-0.5 rounded border ${regColors[stay.registration_status] ?? ''}`}>
-                      {stay.registration_status.replace('_', ' ')}
+                    <span className={`text-xs px-1.5 py-0.5 rounded border ${regColors[stay.registration_status] ?? 'text-gray-400 border-gray-300'}`}>
+                      {regLabels[stay.registration_status] ?? stay.registration_status}
                     </span>
                   </td>
                   <td className="px-4 py-3">

@@ -9,16 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 
 const hsColors: Record<string, string> = {
-  CLEAN: 'bg-green-50 text-green-700 border-green-200',
-  DIRTY: 'bg-red-50 text-red-700 border-red-200',
-  INSPECTED: 'bg-blue-50 text-blue-700 border-blue-200',
-  OUT_OF_SERVICE: 'bg-gray-50 text-gray-500 border-gray-200',
+  CLEAN: 'text-green-600 border-green-300',
+  DIRTY: 'text-red-500 border-red-300',
+  INSPECTED: 'text-blue-600 border-blue-300',
+  OUT_OF_SERVICE: 'text-gray-400 border-gray-300',
 }
 
 const statusColors: Record<string, string> = {
-  ACTIVE: 'bg-green-50 text-green-700',
-  INACTIVE: 'bg-gray-50 text-gray-500',
-  MAINTENANCE: 'bg-orange-50 text-orange-600',
+  ACTIVE: 'text-green-600 border-green-300',
+  INACTIVE: 'text-gray-400 border-gray-300',
+  MAINTENANCE: 'text-orange-500 border-orange-300',
 }
 
 interface Props {
@@ -100,11 +100,13 @@ export function UnitsBoard({ units, properties, canEdit }: Props) {
                   <td className="px-4 py-3 text-muted-foreground">{unit.unit_type}</td>
                   <td className="px-4 py-3 text-muted-foreground">{unit.capacity_adults} adults · {unit.capacity_children} children</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${statusColors[unit.status]}`}>{unit.status}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded border ${statusColors[unit.status] ?? 'text-gray-400 border-gray-300'}`}>
+                      {unit.status === 'ACTIVE' ? 'Active' : unit.status === 'INACTIVE' ? 'Inactive' : 'Maintenance'}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-1.5 py-0.5 rounded border ${hsColors[unit.housekeeping_status]}`}>
-                      {unit.housekeeping_status}
+                    <span className={`text-xs px-1.5 py-0.5 rounded border ${hsColors[unit.housekeeping_status] ?? 'text-gray-400 border-gray-300'}`}>
+                      {unit.housekeeping_status === 'OUT_OF_SERVICE' ? 'Out of Service' : unit.housekeeping_status === 'INSPECTED' ? 'Inspected' : unit.housekeeping_status === 'CLEAN' ? 'Clean' : 'Dirty'}
                     </span>
                   </td>
                   {canEdit && (

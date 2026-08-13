@@ -16,34 +16,34 @@ export interface TodayStay {
 const checkInStatusConfig: Record<TodayStay['checkInStatus'], { label: string; className: string }> = {
   CHECKED_IN: {
     label: 'Checked In',
-    className: 'border-emerald-400/25 bg-emerald-500/15 text-emerald-400',
+    className: 'border-emerald-400/40 text-emerald-400',
   },
   NO_SHOW: {
     label: 'No Show',
-    className: 'border-rose-400/25 bg-rose-500/15 text-rose-400',
+    className: 'border-rose-400/40 text-rose-400',
   },
   TO_BE_CHECKED_IN: {
-    label: 'To Be Checked In',
-    className: 'border-amber-400/25 bg-amber-500/15 text-amber-400',
+    label: 'Expected',
+    className: 'border-amber-400/40 text-amber-400',
   },
 }
 
 const unitStatusConfig: Record<TodayStay['unitStatus'], { label: string; className: string }> = {
   CLEAN: {
     label: 'Clean',
-    className: 'border-emerald-400/25 bg-emerald-500/10 text-emerald-400',
+    className: 'border-emerald-400/40 text-emerald-400',
   },
   DIRTY: {
     label: 'Dirty',
-    className: 'border-amber-400/25 bg-amber-500/10 text-amber-400',
+    className: 'border-amber-400/40 text-amber-400',
   },
   INSPECTED: {
     label: 'Inspected',
-    className: 'border-sky-400/25 bg-sky-500/10 text-sky-400',
+    className: 'border-sky-400/40 text-sky-400',
   },
   OUT_OF_SERVICE: {
     label: 'Out of Service',
-    className: 'border-slate-400/25 bg-slate-500/15 text-slate-300',
+    className: 'border-slate-400/40 text-slate-300',
   },
 }
 
