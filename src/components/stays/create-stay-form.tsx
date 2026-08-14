@@ -896,34 +896,22 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
                         onClick={() => toggleCategory(category)}
                         aria-pressed={isSelected}
                         className={cn(
-                          'flex w-full items-start gap-2.5 rounded-md text-left transition-colors',
+                          'block w-full rounded-md text-left transition-colors',
                           soldOut ? 'cursor-not-allowed' : 'hover:text-primary',
                         )}
                       >
-                        <span
-                          className={cn(
-                            'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors',
-                            isSelected
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border bg-background',
-                          )}
-                        >
-                          {isSelected && <Check className="h-3 w-3" aria-hidden="true" />}
+                        <span className="block text-sm font-semibold text-foreground">{category.label}</span>
+                        <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">
+                          {category.description}
                         </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold text-foreground">{category.label}</span>
-                          <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">
-                            {category.description}
+                        <span className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
+                          <span>
+                            {soldOut ? 'Not available' : `${category.maxSelectable} available`}
+                            {category.physicalUnits > 1 && ` of ${category.physicalUnits}`}
                           </span>
-                          <span className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
-                            <span>
-                              {soldOut ? 'Not available' : `${category.maxSelectable} available`}
-                              {category.physicalUnits > 1 && ` of ${category.physicalUnits}`}
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                              <Users className="h-3 w-3" aria-hidden="true" />
-                              up to {category.maxOccupancy}
-                            </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Users className="h-3 w-3" aria-hidden="true" />
+                            up to {category.maxOccupancy}
                           </span>
                         </span>
                       </button>
