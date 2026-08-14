@@ -125,12 +125,17 @@ CREATE POLICY "reservations_update" ON reservations FOR UPDATE
 -- ============================================================
 -- DROP DEPENDENT POLICIES before touching `stays` / `email_deliveries`
 -- ============================================================
--- None of these policies reference the columns being moved/removed below
--- (verified by inspecting 001/002/004), so this isn't strictly required for
--- ALTER TABLE ... DROP COLUMN to succeed — but dropping them explicitly here
--- means the migration never relies on CASCADE, and it keeps the "old
--- policy vs. new Reservation-aware policy" boundary visible in one place.
+-- guests_select (from 002_property_access.sql) has a hard dependency on
+-- stays.primary_guest_id — it's referenced directly in the policy's USING
+-- subquery — so ALTER TABLE stays DROP COLUMN primary_guest_id fails unless
+-- it's dropped first. None of the other policies below reference a column
+-- being moved/removed (verified by inspecting 001/002/004, and there are no
+-- views in the schema), so those drops aren't strictly required for the
+-- ALTER to succeed — but they're included explicitly anyway so this
+-- migration never relies on CASCADE, and the "old policy vs. new
+-- Reservation-aware policy" boundary stays visible in one place.
 
+DROP POLICY IF EXISTS "guests_select" ON guests;
 DROP POLICY IF EXISTS "stays_select" ON stays;
 DROP POLICY IF EXISTS "stays_insert" ON stays;
 DROP POLICY IF EXISTS "stays_update" ON stays;
@@ -304,6 +309,32 @@ CREATE POLICY "stay_guests_delete" ON stay_guests FOR DELETE
       WHERE s.id = stay_guests.stay_id
         AND s.organization_id = auth_organization_id()
         AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION')
+        AND auth_can_access_property(s.property_id)
+    )
+  );
+
+-- A guest is visible beyond the admin checks if they're the Booker or
+-- Primary Guest of a reservation (both now live on `reservations`, not
+-- `stays`), or if they're linked to any stay via stay_guests (this also
+-- covers accompanying/non-primary guests, which the old policy — keyed only
+-- off stays.primary_guest_id — never made visible at all).
+CREATE POLICY "guests_select" ON guests FOR SELECT
+  USING (
+    auth_is_super_admin()
+    OR (organization_id = auth_organization_id() AND auth_role() = 'ORG_ADMIN')
+    OR EXISTS (
+      SELECT 1
+      FROM reservations r
+      WHERE r.organization_id = guests.organization_id
+        AND (r.primary_guest_id = guests.id OR r.booker_id = guests.id)
+        AND auth_can_access_property(r.property_id)
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM stay_guests sg
+      JOIN stays s ON s.id = sg.stay_id
+      WHERE sg.guest_id = guests.id
+        AND s.organization_id = guests.organization_id
         AND auth_can_access_property(s.property_id)
     )
   );
