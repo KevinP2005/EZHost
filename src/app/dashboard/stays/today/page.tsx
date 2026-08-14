@@ -25,14 +25,17 @@ interface StayRow {
     name: string | null
     housekeeping_status: TodayStay['unitStatus']
   } | null
-  guests: {
-    first_name: string | null
-    last_name: string | null
+  reservations: {
+    guests: {
+      first_name: string | null
+      last_name: string | null
+    } | null
   } | null
 }
 
 function getGuestName(stay: StayRow) {
-  const name = [stay.guests?.first_name, stay.guests?.last_name]
+  const guest = stay.reservations?.guests
+  const name = [guest?.first_name, guest?.last_name]
     .map((part) => part?.trim())
     .filter(Boolean)
     .join(' ')
@@ -84,9 +87,9 @@ export default async function TodayStaysPage({ searchParams }: TodayStaysPagePro
       children,
       status,
       units(name, housekeeping_status),
-      guests!primary_guest_id(first_name, last_name)
+      reservations!inner(booking_status, guests!primary_guest_id(first_name, last_name))
     `)
-    .eq('booking_status', 'CONFIRMED')
+    .eq('reservations.booking_status', 'CONFIRMED')
     .lte('check_in_date', today)
     .gt('check_out_date', today)
     .in('status', ['BOOKED', 'CHECKED_IN', 'NO_SHOW'])

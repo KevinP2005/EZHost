@@ -50,7 +50,7 @@ export function BookingDetail({ stay, stayGuests, notes, canEdit }: Props) {
 
   const guest = stay.guests
   const guestName = guest ? [guest.first_name, guest.last_name].filter(Boolean).join(' ') : ''
-  const bookingTitle = stay.external_reference ?? guestName ?? 'Stay Details'
+  const bookingTitle = stay.reservation_number ?? guestName ?? 'Stay Details'
 
   function refresh() {
     router.refresh()

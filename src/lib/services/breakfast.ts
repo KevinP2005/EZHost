@@ -68,7 +68,7 @@ export async function getBreakfastList(
       *,
       units(name),
       properties(name),
-      stays(check_in_date, check_out_date, adults, children, guests!primary_guest_id(first_name, last_name))
+      stays(check_in_date, check_out_date, adults, children, reservations(guests!primary_guest_id(first_name, last_name)))
     `)
     .eq('date', date)
     .not('status', 'eq', 'CANCELLED')

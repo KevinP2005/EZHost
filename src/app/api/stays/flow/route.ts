@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     const emailResult = await sendBookingEmail({
       organizationId: property.organization_id,
       stay,
+      reservation: stay.reservation,
       guestName: parsed.data.primary_guest.name,
       recipient: parsed.data.primary_guest.email,
       hotelName: property.name,

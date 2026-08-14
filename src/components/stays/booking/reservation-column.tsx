@@ -99,7 +99,6 @@ export function ReservationColumn({ stay, stayGuests, canEdit, onEdit }: Props) 
               <SelectBox checked={selected} onChange={() => setSelected(!selected)} />
 
               <div className="flex items-center gap-2 whitespace-nowrap text-muted-foreground">
-                <span className="text-[11px]">{stay.room_count ?? 1} ×</span>
                 <UserRound className="h-4 w-4" aria-hidden />
                 <FileText className="h-4 w-4" aria-hidden />
                 <SlidersHorizontal className="h-4 w-4" aria-hidden />

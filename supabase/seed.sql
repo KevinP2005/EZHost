@@ -116,34 +116,104 @@ BEGIN
   (v_guest_7, v_org_id, 'Sophie',   'Wagner',    'sophie.wagner@example.com',   '+49 170 77777777', 'DE', '1988-03-20', 'ID Card',  'DE888999000');
 
   -- ============================================================
-  -- STAYS
+  -- RESERVATIONS + STAYS
   -- ============================================================
+  -- Each test booking becomes one Reservation (booker = primary guest, since
+  -- the booking flow only ever collects a single guest) with exactly one
+  -- Stay. reservation_number / stay_number are system-generated.
 
   -- Arriving today
-  INSERT INTO stays (id, organization_id, property_id, unit_id, primary_guest_id, source, check_in_date, check_out_date, arrival_time, adults, children, status, breakfast_included, breakfast_count_adults, breakfast_count_children, local_tax_applicable, registration_status, notes) VALUES
-  (gen_random_uuid(), v_org_id, v_prop1_id, v_room_101, v_guest_1, 'MANUAL', today_date, today_date + 4, '15:00', 2, 0, 'BOOKED',     TRUE,  2, 0, TRUE, 'PARTIAL',  'Allergic to nuts'),
-  (gen_random_uuid(), v_org_id, v_prop1_id, v_room_103, v_guest_4, 'MANUAL', today_date, today_date + 2, '14:00', 2, 1, 'BOOKED',     FALSE, 0, 0, TRUE, 'MISSING',  NULL),
-  (gen_random_uuid(), v_org_id, v_prop2_id, v_apt_a,    v_guest_6, 'MANUAL', today_date, today_date + 7, NULL,    2, 2, 'BOOKED',     TRUE,  2, 2, TRUE, 'MISSING',  'Family with young children');
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop1_id, v_guest_1, v_guest_1, 'CONFIRMED', 1160.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, arrival_time, adults, children, status, breakfast_included, breakfast_count_adults, breakfast_count_children, local_tax_applicable, registration_status, notes)
+  SELECT v_org_id, v_prop1_id, v_room_101, r.id, today_date, today_date + 4, '15:00', 2, 0, 'BOOKED', TRUE, 2, 0, TRUE, 'PARTIAL', 'Allergic to nuts' FROM r;
+
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop1_id, v_guest_4, v_guest_4, 'CONFIRMED', 380.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, arrival_time, adults, children, status, breakfast_included, breakfast_count_adults, breakfast_count_children, local_tax_applicable, registration_status, notes)
+  SELECT v_org_id, v_prop1_id, v_room_103, r.id, today_date, today_date + 2, '14:00', 2, 1, 'BOOKED', FALSE, 0, 0, TRUE, 'MISSING', NULL FROM r;
+
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop2_id, v_guest_6, v_guest_6, 'CONFIRMED', 1610.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, adults, children, status, breakfast_included, breakfast_count_adults, breakfast_count_children, local_tax_applicable, registration_status, notes)
+  SELECT v_org_id, v_prop2_id, v_apt_a, r.id, today_date, today_date + 7, 2, 2, 'BOOKED', TRUE, 2, 2, TRUE, 'MISSING', 'Family with young children' FROM r;
 
   -- Currently checked in (in-house)
-  INSERT INTO stays (id, organization_id, property_id, unit_id, primary_guest_id, source, check_in_date, check_out_date, departure_time, adults, children, status, breakfast_included, breakfast_count_adults, breakfast_count_children, local_tax_applicable, local_tax_amount, registration_status, notes) VALUES
-  (gen_random_uuid(), v_org_id, v_prop1_id, v_room_102, v_guest_2, 'MANUAL', today_date - 2, today_date + 1, '10:00', 2, 0, 'CHECKED_IN', TRUE,  2, 0, TRUE,  12.00, 'COMPLETE', NULL),
-  (gen_random_uuid(), v_org_id, v_prop1_id, v_room_201, v_guest_3, 'MANUAL', today_date - 1, today_date + 3, '11:00', 2, 0, 'CHECKED_IN', TRUE,  2, 0, TRUE,  8.00,  'COMPLETE', 'Vegetarian breakfast'),
-  (gen_random_uuid(), v_org_id, v_prop1_id, v_room_202, v_guest_5, 'MANUAL', today_date - 3, today_date + 2, '12:00', 2, 2, 'CHECKED_IN', TRUE,  2, 2, TRUE,  20.00, 'PARTIAL',  NULL),
-  (gen_random_uuid(), v_org_id, v_prop2_id, v_apt_b,    v_guest_7, 'MANUAL', today_date - 1, today_date + 5, NULL,    4, 0, 'CHECKED_IN', FALSE, 0, 0, TRUE,  32.00, 'COMPLETE', NULL);
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop1_id, v_guest_2, v_guest_2, 'CONFIRMED', 435.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, departure_time, adults, children, status, breakfast_included, breakfast_count_adults, breakfast_count_children, local_tax_applicable, local_tax_amount, registration_status, notes)
+  SELECT v_org_id, v_prop1_id, v_room_102, r.id, today_date - 2, today_date + 1, '10:00', 2, 0, 'CHECKED_IN', TRUE, 2, 0, TRUE, 12.00, 'COMPLETE', NULL FROM r;
+
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop1_id, v_guest_3, v_guest_3, 'CONFIRMED', 580.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, departure_time, adults, children, status, breakfast_included, breakfast_count_adults, breakfast_count_children, local_tax_applicable, local_tax_amount, registration_status, notes)
+  SELECT v_org_id, v_prop1_id, v_room_201, r.id, today_date - 1, today_date + 3, '11:00', 2, 0, 'CHECKED_IN', TRUE, 2, 0, TRUE, 8.00, 'COMPLETE', 'Vegetarian breakfast' FROM r;
+
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop1_id, v_guest_5, v_guest_5, 'CONFIRMED', 1425.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, departure_time, adults, children, status, breakfast_included, breakfast_count_adults, breakfast_count_children, local_tax_applicable, local_tax_amount, registration_status, notes)
+  SELECT v_org_id, v_prop1_id, v_room_202, r.id, today_date - 3, today_date + 2, '12:00', 2, 2, 'CHECKED_IN', TRUE, 2, 2, TRUE, 20.00, 'PARTIAL', NULL FROM r;
+
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop2_id, v_guest_7, v_guest_7, 'CONFIRMED', 2280.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, adults, children, status, breakfast_included, breakfast_count_adults, breakfast_count_children, local_tax_applicable, local_tax_amount, registration_status, notes)
+  SELECT v_org_id, v_prop2_id, v_apt_b, r.id, today_date - 1, today_date + 5, 4, 0, 'CHECKED_IN', FALSE, 0, 0, TRUE, 32.00, 'COMPLETE', NULL FROM r;
 
   -- Departing today
-  INSERT INTO stays (id, organization_id, property_id, unit_id, primary_guest_id, source, check_in_date, check_out_date, departure_time, adults, status, breakfast_included, breakfast_count_adults, local_tax_applicable, local_tax_amount, registration_status) VALUES
-  (gen_random_uuid(), v_org_id, v_prop1_id, v_suite_1,  v_guest_2, 'MANUAL', today_date - 5, today_date,    '11:00', 2, 'CHECKED_IN', TRUE,  2, TRUE, 20.00, 'COMPLETE');
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop1_id, v_guest_2, v_guest_2, 'CONFIRMED', 725.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, departure_time, adults, status, breakfast_included, breakfast_count_adults, local_tax_applicable, local_tax_amount, registration_status)
+  SELECT v_org_id, v_prop1_id, v_suite_1, r.id, today_date - 5, today_date, '11:00', 2, 'CHECKED_IN', TRUE, 2, TRUE, 20.00, 'COMPLETE' FROM r;
 
   -- Future bookings
-  INSERT INTO stays (id, organization_id, property_id, unit_id, primary_guest_id, source, check_in_date, check_out_date, adults, status, breakfast_included, breakfast_count_adults, local_tax_applicable, registration_status) VALUES
-  (gen_random_uuid(), v_org_id, v_prop1_id, v_room_101, v_guest_3, 'MANUAL', today_date + 6,  today_date + 9,  2, 'BOOKED', TRUE,  2, TRUE, 'MISSING'),
-  (gen_random_uuid(), v_org_id, v_prop2_id, v_chalet_1, v_guest_1, 'MANUAL', today_date + 10, today_date + 17, 4, 'BOOKED', TRUE,  4, TRUE, 'MISSING');
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop1_id, v_guest_3, v_guest_3, 'CONFIRMED', 435.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, adults, status, breakfast_included, breakfast_count_adults, local_tax_applicable, registration_status)
+  SELECT v_org_id, v_prop1_id, v_room_101, r.id, today_date + 6, today_date + 9, 2, 'BOOKED', TRUE, 2, TRUE, 'MISSING' FROM r;
+
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop2_id, v_guest_1, v_guest_1, 'CONFIRMED', 2520.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, adults, status, breakfast_included, breakfast_count_adults, local_tax_applicable, registration_status)
+  SELECT v_org_id, v_prop2_id, v_chalet_1, r.id, today_date + 10, today_date + 17, 4, 'BOOKED', TRUE, 4, TRUE, 'MISSING' FROM r;
 
   -- Past checked-out stay
-  INSERT INTO stays (id, organization_id, property_id, unit_id, primary_guest_id, source, check_in_date, check_out_date, adults, status, breakfast_included, breakfast_count_adults, local_tax_applicable, local_tax_amount, registration_status) VALUES
-  (gen_random_uuid(), v_org_id, v_prop1_id, v_room_103, v_guest_4, 'MANUAL', today_date - 7, today_date - 3, 2, 'CHECKED_OUT', TRUE, 2, TRUE, 14.00, 'COMPLETE');
+  WITH r AS (
+    INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
+    VALUES (v_org_id, v_prop1_id, v_guest_4, v_guest_4, 'CONFIRMED', 580.00, 'EUR')
+    RETURNING id
+  )
+  INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, adults, status, breakfast_included, breakfast_count_adults, local_tax_applicable, local_tax_amount, registration_status)
+  SELECT v_org_id, v_prop1_id, v_room_103, r.id, today_date - 7, today_date - 3, 2, 'CHECKED_OUT', TRUE, 2, TRUE, 14.00, 'COMPLETE' FROM r;
 
   -- ============================================================
   -- BREAKFAST ITEMS (today)

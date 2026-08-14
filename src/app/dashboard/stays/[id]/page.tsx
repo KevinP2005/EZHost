@@ -12,6 +12,8 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
+const GUEST_FIELDS = 'id, first_name, last_name, email, phone, nationality, document_type, document_number, date_of_birth, company'
+
 export default async function StayDetailPage({ params }: Props) {
   const { id } = await params
   const profile = await requireAuth()
@@ -23,7 +25,11 @@ export default async function StayDetailPage({ params }: Props) {
       *,
       units(id, name, unit_type, housekeeping_status),
       properties(id, name),
-      guests!primary_guest_id(id, first_name, last_name, email, phone, nationality, document_type, document_number, date_of_birth, company)
+      reservations(
+        *,
+        primary_guest:guests!primary_guest_id(${GUEST_FIELDS}),
+        booker:guests!booker_id(${GUEST_FIELDS})
+      )
     `)
     .eq('id', id)
     .single()
@@ -49,9 +55,46 @@ export default async function StayDetailPage({ params }: Props) {
       .order('created_at', { ascending: false }),
   ])
 
+  // Flatten the reservation onto the stay for display: most of the booking
+  // panel still reads a single flat object (`stay.total_amount`, `stay.guests`
+  // for the primary guest, etc.) even though those fields now live on the
+  // Reservation. The stay's own id/timestamps always win.
+  const { reservations: reservation, ...stayRest } = stay as typeof stay & {
+    reservations: {
+      id: string
+      reservation_number: string
+      external_reference: string | null
+      source: string
+      booking_status: string
+      total_amount: number | null
+      currency: string
+      confirmation_preference: string | null
+      notes: string | null
+      internal_notes: string | null
+      primary_guest: Record<string, unknown> | null
+      booker: Record<string, unknown> | null
+    } | null
+  }
+
+  const stayView = {
+    ...stayRest,
+    reservation_id: reservation?.id ?? null,
+    reservation_number: reservation?.reservation_number ?? null,
+    external_reference: reservation?.external_reference ?? null,
+    source: reservation?.source ?? null,
+    booking_status: reservation?.booking_status ?? null,
+    total_amount: reservation?.total_amount ?? null,
+    currency: reservation?.currency ?? 'EUR',
+    confirmation_preference: reservation?.confirmation_preference ?? null,
+    reservation_notes: reservation?.notes ?? null,
+    reservation_internal_notes: reservation?.internal_notes ?? null,
+    guests: reservation?.primary_guest ?? null,
+    booker: reservation?.booker ?? null,
+  }
+
   return (
     <BookingDetail
-      stay={stay}
+      stay={stayView}
       stayGuests={stayGuests ?? []}
       notes={notes ?? []}
       canEdit={['SUPER_ADMIN', 'ORG_ADMIN', 'MANAGER', 'RECEPTION'].includes(profile.role)}

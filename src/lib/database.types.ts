@@ -114,14 +114,33 @@ export interface Guest {
   updated_at: string
 }
 
+export interface Reservation {
+  id: string
+  organization_id: string
+  property_id: string
+  reservation_number: string
+  booker_id: string
+  primary_guest_id: string
+  external_reference: string | null
+  source: StaySource
+  booking_status: BookingStatus
+  total_amount: number | null
+  currency: string
+  confirmation_preference: string | null
+  notes: string | null
+  internal_notes: string | null
+  created_at: string
+  updated_at: string
+  cancelled_at: string | null
+}
+
 export interface Stay {
   id: string
   organization_id: string
   property_id: string
   unit_id: string
-  primary_guest_id: string | null
-  external_reference: string | null
-  source: StaySource
+  reservation_id: string
+  stay_number: string
   check_in_date: string
   check_out_date: string
   arrival_time: string | null
@@ -129,27 +148,22 @@ export interface Stay {
   adults: number
   children: number
   status: StayStatus
-  booking_status: BookingStatus
   breakfast_included: boolean
   breakfast_count_adults: number
   breakfast_count_children: number
   local_tax_applicable: boolean
   local_tax_amount: number | null
-  room_count: number
   room_label: string | null
   rate_code: string | null
   rate_label: string | null
   nightly_rate: number | null
   subtotal_amount: number | null
   extras_amount: number | null
-  total_amount: number | null
-  currency: string
-  confirmation_preference: string | null
   price_details: Json
   extras_details: Json
   registration_status: RegistrationStatus
+  /** Operative notes for this specific stay. General/commercial notes for the whole booking live on Reservation. */
   notes: string | null
-  internal_notes: string | null
   created_at: string
   updated_at: string
 }
@@ -255,7 +269,7 @@ export interface ActivityLog {
 export interface EmailDelivery {
   id: string
   organization_id: string
-  booking_id: string
+  reservation_id: string
   recipient: string
   email_type: EmailType
   resend_email_id: string | null

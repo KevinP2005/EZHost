@@ -28,7 +28,11 @@ type StayRow = {
   registration_status?: string | null
   created_at?: string | null
   units?: { name: string | null } | null
-  guests?: { first_name: string | null; last_name: string | null } | null
+  reservations?: { guests: { first_name: string | null; last_name: string | null } | null } | null
+}
+
+function getStayGuest(stay: StayRow) {
+  return stay.reservations?.guests ?? null
 }
 
 type UnitRow = {
@@ -57,8 +61,9 @@ type ActivityRow = {
 }
 
 function getGuestName(stay: StayRow) {
-  const firstName = stay.guests?.first_name?.trim()
-  const lastName = stay.guests?.last_name?.trim()
+  const guest = getStayGuest(stay)
+  const firstName = guest?.first_name?.trim()
+  const lastName = guest?.last_name?.trim()
   const name = [firstName, lastName].filter(Boolean).join(' ')
 
   return name || 'Guest'
@@ -162,7 +167,7 @@ export async function getOwnerDashboardData(
 
   const upcomingQuery = supabase
     .from('stays')
-    .select('id, check_in_date, check_out_date, adults, children, status, registration_status, created_at, units(name), guests!primary_guest_id(first_name, last_name)')
+    .select('id, check_in_date, check_out_date, adults, children, status, registration_status, created_at, units(name), reservations(guests!primary_guest_id(first_name, last_name))')
     .eq('check_in_date', date)
     .not('status', 'in', '("CANCELLED","NO_SHOW")')
     .order('check_in_date', { ascending: true })
@@ -177,7 +182,7 @@ export async function getOwnerDashboardData(
 
   const currentStaysQuery = supabase
     .from('stays')
-    .select('id, unit_id, check_in_date, check_out_date, adults, children, status, units(name), guests!primary_guest_id(first_name, last_name)')
+    .select('id, unit_id, check_in_date, check_out_date, adults, children, status, units(name), reservations(guests!primary_guest_id(first_name, last_name))')
     .eq('status', 'CHECKED_IN')
     .lte('check_in_date', date)
     .gt('check_out_date', date)
@@ -192,7 +197,7 @@ export async function getOwnerDashboardData(
 
   const missingRegistrationQuery = supabase
     .from('stays')
-    .select('id, check_in_date, check_out_date, adults, children, status, registration_status, units(name), guests!primary_guest_id(first_name, last_name)')
+    .select('id, check_in_date, check_out_date, adults, children, status, registration_status, units(name), reservations(guests!primary_guest_id(first_name, last_name))')
     .in('registration_status', ['MISSING', 'PARTIAL'])
     .in('status', ['BOOKED', 'CHECKED_IN'])
     .gte('check_out_date', date)

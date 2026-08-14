@@ -51,10 +51,11 @@ interface Props {
 
 export function ReservationDetails({ stay, stayGuests }: Props) {
   const guest = stay.guests
+  const booker = stay.booker
   const currency: string = stay.currency ?? 'EUR'
   const nights = nightsBetween(stay.check_in_date, stay.check_out_date)
 
-  const bookerName = guest ? `${guest.first_name} ${guest.last_name}`.trim() : null
+  const bookerName = booker ? `${booker.first_name} ${booker.last_name}`.trim() : null
   const companions = (stayGuests ?? [])
     .filter((row) => !row.is_primary_guest && row.guests)
     .map((row) => `${row.guests.first_name} ${row.guests.last_name}`.trim())
@@ -77,9 +78,7 @@ export function ReservationDetails({ stay, stayGuests }: Props) {
   return (
     <div className="border-t border-border py-3 pl-8 pr-3">
       <Row label="Service">Stay</Row>
-      <Row label="Booking Reference">
-        {stay.external_reference ?? String(stay.id).slice(0, 8).toUpperCase()}
-      </Row>
+      <Row label="Booking Reference">{stay.reservation_number}</Row>
       <Row label="Status">
         <StatusBadge status={stay.status} />
       </Row>
@@ -176,7 +175,7 @@ export function ReservationDetails({ stay, stayGuests }: Props) {
       </button>
 
       <Spacer />
-      <Row label="Company">{guest?.company}</Row>
+      <Row label="Company">{booker?.company ?? guest?.company}</Row>
       <Row label="Booking Portal">{stay.source === 'OTA' ? 'Online travel agency' : null}</Row>
       <Row label="Booking Portal Reference">
         {stay.source === 'OTA' ? stay.external_reference : null}

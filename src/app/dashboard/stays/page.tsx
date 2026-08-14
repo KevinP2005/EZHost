@@ -27,7 +27,7 @@ export default async function StaysPage({ searchParams }: Props) {
       *,
       units(name, unit_type),
       properties(name),
-      guests!primary_guest_id(first_name, last_name)
+      reservations(guests!primary_guest_id(first_name, last_name))
     `)
     .order('check_in_date', { ascending: false })
     .limit(100)
@@ -41,10 +41,14 @@ export default async function StaysPage({ searchParams }: Props) {
   }
 
   const { data: stays } = await query
+  const staysWithGuest = (stays ?? []).map((stay) => ({
+    ...stay,
+    guests: (stay as { reservations?: { guests?: unknown } | null }).reservations?.guests ?? null,
+  }))
 
   return (
     <StaysList
-      stays={stays ?? []}
+      stays={staysWithGuest}
       properties={scope.properties}
       currentFilters={params}
       canEdit={['SUPER_ADMIN', 'ORG_ADMIN', 'MANAGER', 'RECEPTION'].includes(profile.role)}

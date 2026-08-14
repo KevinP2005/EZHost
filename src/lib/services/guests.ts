@@ -58,21 +58,22 @@ export async function getGuests(
   }
 
   if (propertyId || propertyIds?.length) {
-    let staysQuery = supabase
-      .from('stays')
+    // primary_guest_id now lives on reservations, which already carry their
+    // own property_id — no need to join through stays.
+    let reservationsQuery = supabase
+      .from('reservations')
       .select('primary_guest_id')
-      .not('primary_guest_id', 'is', null)
 
-    if (organizationId) staysQuery = staysQuery.eq('organization_id', organizationId)
-    if (propertyId) staysQuery = staysQuery.eq('property_id', propertyId)
-    else if (propertyIds?.length) staysQuery = staysQuery.in('property_id', propertyIds)
+    if (organizationId) reservationsQuery = reservationsQuery.eq('organization_id', organizationId)
+    if (propertyId) reservationsQuery = reservationsQuery.eq('property_id', propertyId)
+    else if (propertyIds?.length) reservationsQuery = reservationsQuery.in('property_id', propertyIds)
 
-    const { data: stays, error: staysError } = await staysQuery
+    const { data: reservations, error: reservationsError } = await reservationsQuery
 
-    if (staysError) throw new Error(staysError.message)
+    if (reservationsError) throw new Error(reservationsError.message)
 
     const guestIds = Array.from(
-      new Set((stays ?? []).map((stay) => stay.primary_guest_id).filter(Boolean)),
+      new Set((reservations ?? []).map((reservation) => reservation.primary_guest_id).filter(Boolean)),
     )
 
     if (guestIds.length === 0) {

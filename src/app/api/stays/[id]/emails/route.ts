@@ -20,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { data: stay, error: stayError } = await supabase
     .from('stays')
-    .select('property_id, guests!primary_guest_id(email)')
+    .select('property_id, reservation_id, reservations(guests!primary_guest_id(email))')
     .eq('id', stayId)
     .single()
 
@@ -36,14 +36,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   let { data: messages, error: msgError } = await supabase
     .from('email_deliveries')
     .select('*, profiles!sent_by_profile_id(id, name)')
-    .eq('booking_id', stayId)
+    .eq('reservation_id', stay.reservation_id)
     .order('created_at', { ascending: false })
 
   if (msgError) {
     const fallback = await supabase
       .from('email_deliveries')
-      .select('id, organization_id, booking_id, recipient, email_type, resend_email_id, status, sent_at, error_message, created_at')
-      .eq('booking_id', stayId)
+      .select('id, organization_id, reservation_id, recipient, email_type, resend_email_id, status, sent_at, error_message, created_at')
+      .eq('reservation_id', stay.reservation_id)
       .order('created_at', { ascending: false })
 
     if (fallback.error) return NextResponse.json({ error: fallback.error.message }, { status: 500 })
@@ -58,7 +58,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     msgError = null
   }
 
-  const guest = stay.guests as unknown as { email: string | null } | null
+  const guest = (stay.reservations as unknown as { guests: { email: string | null } | null } | null)?.guests ?? null
   const normalized = (messages ?? []).map((m: Record<string, unknown>) => {
     const { profiles, ...rest } = m
     const sentBy = profiles as { id: string; name: string } | null
@@ -123,13 +123,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { data: stay, error: stayError } = await supabase
     .from('stays')
     .select(`
-      id, organization_id, property_id, check_in_date, check_out_date,
+      id, organization_id, property_id, reservation_id, check_in_date, check_out_date,
       arrival_time, departure_time, adults, children, room_label,
-      nightly_rate, subtotal_amount, extras_amount, total_amount, currency,
-      local_tax_applicable, local_tax_amount, external_reference,
+      nightly_rate, subtotal_amount, extras_amount,
+      local_tax_applicable, local_tax_amount,
       units(name),
       properties(id, name, organization_id, address, city, country),
-      guests!primary_guest_id(first_name, last_name, email)
+      reservations(reservation_number, total_amount, currency, guests!primary_guest_id(first_name, last_name, email))
     `)
     .eq('id', stayId)
     .single()
@@ -137,6 +137,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (stayError || !stay) {
     return NextResponse.json({ error: 'Stay not found.' }, { status: 404 })
   }
+
+  const reservation = stay.reservations as unknown as {
+    reservation_number: string
+    total_amount: number | null
+    currency: string
+    guests: { first_name: string; last_name: string; email: string | null } | null
+  } | null
 
   let property: Awaited<ReturnType<typeof assertCanAccessProperty>>
   try {
@@ -187,7 +194,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       )
     }
 
-    const guest = stay.guests as unknown as { first_name: string; last_name: string; email: string | null } | null
+    const guest = reservation?.guests ?? null
     const nights = Math.round(
       (new Date(stay.check_out_date).getTime() - new Date(stay.check_in_date).getTime()) / 86400000,
     )
@@ -234,9 +241,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           stay.local_tax_applicable && stay.local_tax_amount != null
             ? Number(stay.local_tax_amount)
             : undefined,
-        totalPrice: Number(stay.total_amount ?? 0),
-        currency: stay.currency,
-        bookingReference: stay.external_reference ?? stay.id,
+        totalPrice: Number(reservation?.total_amount ?? 0),
+        currency: reservation?.currency ?? 'EUR',
+        bookingReference: reservation?.reservation_number ?? stay.id,
         arrivalTime: stay.arrival_time ?? undefined,
         hotelEmail: replyTo,
         paid: false,
@@ -283,7 +290,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   await supabase.from('email_deliveries').insert({
     organization_id: stay.organization_id,
-    booking_id: stayId,
+    reservation_id: stay.reservation_id,
     recipient,
     subject,
     email_type: emailType,

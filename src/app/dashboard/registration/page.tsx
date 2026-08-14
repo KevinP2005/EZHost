@@ -25,9 +25,9 @@ export default async function RegistrationPage({ searchParams }: RegistrationPag
       local_tax_applicable, local_tax_amount,
       units(name),
       properties(name),
-      guests!primary_guest_id(first_name, last_name, email, nationality, document_type, document_number, date_of_birth)
+      reservations!inner(booking_status, guests!primary_guest_id(first_name, last_name, email, nationality, document_type, document_number, date_of_birth))
     `)
-    .eq('booking_status', 'CONFIRMED')
+    .eq('reservations.booking_status', 'CONFIRMED')
     .in('status', ['BOOKED', 'CHECKED_IN'])
     .order('check_in_date', { ascending: true })
     .limit(200)
@@ -39,11 +39,15 @@ export default async function RegistrationPage({ searchParams }: RegistrationPag
     if (propertyIds.length > 0) query = query.in('property_id', propertyIds)
   }
 
-  const { data: stays } = await query
+  const { data: rawStays } = await query
+  const stays = (rawStays ?? []).map((stay) => ({
+    ...stay,
+    guests: (stay as { reservations?: { guests?: unknown } | null }).reservations?.guests ?? null,
+  }))
 
-  const missing = stays?.filter((s) => s.registration_status === 'MISSING') ?? []
-  const partial = stays?.filter((s) => s.registration_status === 'PARTIAL') ?? []
-  const complete = stays?.filter((s) => s.registration_status === 'COMPLETE') ?? []
+  const missing = stays.filter((s) => s.registration_status === 'MISSING')
+  const partial = stays.filter((s) => s.registration_status === 'PARTIAL')
+  const complete = stays.filter((s) => s.registration_status === 'COMPLETE')
 
   return (
     <RegistrationOverview

@@ -1,11 +1,13 @@
-﻿import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { createActivityLog } from '@/lib/services/activity'
-import type { Stay, StayStatus, RegistrationStatus, BookingStatus } from '@/lib/database.types'
-import type { CreateStayInput, CreateStayFlowInput, UpdateStayInput } from '@/lib/schemas/stays'
+import type { Reservation, Stay, StayStatus, RegistrationStatus } from '@/lib/database.types'
+import type { CreateStayFlowInput, UpdateStayInput } from '@/lib/schemas/stays'
 
 // Re-export schema + type so existing imports from this module still work
-export { createStaySchema, createStayFlowSchema } from '@/lib/schemas/stays'
-export type { CreateStayInput, CreateStayFlowInput } from '@/lib/schemas/stays'
+export { createStayFlowSchema } from '@/lib/schemas/stays'
+export type { CreateStayFlowInput } from '@/lib/schemas/stays'
+
+export type StayWithReservation = Stay & { reservation: Reservation }
 
 function splitGuestName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -24,25 +26,17 @@ function splitGuestName(name: string) {
   }
 }
 
-export async function createStay(organizationId: string, profileId: string, input: CreateStayInput): Promise<Stay> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('stays')
-    .insert({ ...input, organization_id: organizationId, status: 'BOOKED', registration_status: 'MISSING' })
-    .select()
-    .single()
-
-  if (error) throw new Error(error.message)
-
-  await createActivityLog(organizationId, profileId, 'stay_created', 'stay', data.id, undefined, data.property_id)
-  return data
-}
-
+/**
+ * Creates Booker + Primary Guest + Reservation + Stay + stay_guests in one
+ * transaction via `create_stay_booking_flow`. The UI currently only collects
+ * a single guest at booking time, so Booker and Primary Guest are the same
+ * guest record.
+ */
 export async function createStayFromFlow(
   organizationId: string,
   profileId: string,
   input: CreateStayFlowInput
-): Promise<Stay> {
+): Promise<StayWithReservation> {
   const supabase = await createClient()
 
   const primaryGuestName = splitGuestName(input.primary_guest.name)
@@ -51,7 +45,7 @@ export async function createStayFromFlow(
     date_of_birth: guest.birthDate || null,
   }))
 
-  const { data, error } = await supabase.rpc('create_stay_booking_flow', {
+  const { data: stay, error } = await supabase.rpc('create_stay_booking_flow', {
     p_organization_id: organizationId,
     p_property_id: input.property_id,
     p_unit_id: input.unit_id,
@@ -59,8 +53,7 @@ export async function createStayFromFlow(
     p_check_out_date: input.check_out_date,
     p_adults: input.adults,
     p_children: input.children,
-    p_room_count: input.room_count,
-    p_booking_status: input.booking_status as BookingStatus,
+    p_booking_status: input.booking_status,
     p_rate_code: input.rate_code,
     p_rate_label: input.rate_label,
     p_room_label: input.room_label,
@@ -88,12 +81,20 @@ export async function createStayFromFlow(
 
   if (error) throw new Error(error.message)
 
+  const { data: reservation, error: reservationError } = await supabase
+    .from('reservations')
+    .select('*')
+    .eq('id', stay.reservation_id)
+    .single()
+
+  if (reservationError) throw new Error(reservationError.message)
+
   await createActivityLog(
     organizationId,
     profileId,
     input.booking_status === 'OFFER' ? 'offer_created' : 'stay_confirmed',
-    'stay',
-    data.id,
+    'reservation',
+    reservation.id,
     {
       booking_status: input.booking_status,
       room_label: input.room_label,
@@ -103,7 +104,7 @@ export async function createStayFromFlow(
     input.property_id
   )
 
-  return data
+  return { ...stay, reservation }
 }
 
 export async function updateStay(
@@ -124,44 +125,6 @@ export async function updateStay(
   if (error) throw new Error(error.message)
 
   await createActivityLog(organizationId, profileId, 'stay_updated', 'stay', stayId, undefined, data.property_id)
-  return data
-}
-
-export async function cancelStay(
-  stayId: string,
-  organizationId: string,
-  profileId: string,
-  reason: string,
-  details?: string
-): Promise<Stay> {
-  const supabase = await createClient()
-  const status: StayStatus = reason === 'NO_SHOW' ? 'NO_SHOW' : 'CANCELLED'
-
-  // Free-text details stay in internal_notes; only the reason code is logged.
-  let internalNotes: string | undefined
-  if (details) {
-    const { data: current } = await supabase
-      .from('stays')
-      .select('internal_notes')
-      .eq('id', stayId)
-      .eq('organization_id', organizationId)
-      .single()
-
-    const note = `Cancellation (${reason}): ${details}`
-    internalNotes = current?.internal_notes ? `${current.internal_notes}\n${note}` : note
-  }
-
-  const { data, error } = await supabase
-    .from('stays')
-    .update({ status, ...(internalNotes !== undefined ? { internal_notes: internalNotes } : {}) })
-    .eq('id', stayId)
-    .eq('organization_id', organizationId)
-    .select()
-    .single()
-
-  if (error) throw new Error(error.message)
-
-  await createActivityLog(organizationId, profileId, 'stay_cancelled', 'stay', stayId, { reason }, data.property_id)
   return data
 }
 
@@ -195,6 +158,45 @@ export async function checkOutStay(stayId: string, organizationId: string, profi
   return data
 }
 
+export async function cancelStay(
+  stayId: string,
+  organizationId: string,
+  profileId: string,
+  reason: string,
+  details?: string
+): Promise<Stay> {
+  const supabase = await createClient()
+  const status: StayStatus = reason === 'NO_SHOW' ? 'NO_SHOW' : 'CANCELLED'
+
+  // Free-text details go into the stay's own operative notes (stays no
+  // longer has an internal_notes column — that concept now lives on Reservation).
+  let notes: string | undefined
+  if (details) {
+    const { data: current } = await supabase
+      .from('stays')
+      .select('notes')
+      .eq('id', stayId)
+      .eq('organization_id', organizationId)
+      .single()
+
+    const note = `Cancellation (${reason}): ${details}`
+    notes = current?.notes ? `${current.notes}\n${note}` : note
+  }
+
+  const { data, error } = await supabase
+    .from('stays')
+    .update({ status, ...(notes !== undefined ? { notes } : {}) })
+    .eq('id', stayId)
+    .eq('organization_id', organizationId)
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  await createActivityLog(organizationId, profileId, 'stay_cancelled', 'stay', stayId, { reason }, data.property_id)
+  return data
+}
+
 export async function updateRegistrationStatus(
   stayId: string,
   organizationId: string,
@@ -214,6 +216,12 @@ export async function updateRegistrationStatus(
   await createActivityLog(organizationId, profileId, 'registration_status_updated', 'stay', stayId, { status }, data.property_id)
 }
 
+/** Flattens the embedded `reservations` row onto a stay row for display, keeping the stay's own id/timestamps. */
+function flattenReservation<T extends { id: string; reservations: Record<string, unknown> | null }>(row: T) {
+  const { reservations, ...rest } = row
+  return { ...reservations, ...rest, guests: (reservations as Record<string, unknown> | null)?.guests ?? null }
+}
+
 export async function getStaysByDate(
   organizationId: string | null,
   date: string,
@@ -224,24 +232,24 @@ export async function getStaysByDate(
 
   const arrivalsQuery = supabase
     .from('stays')
-    .select('*, units(name), properties(name), guests!primary_guest_id(first_name, last_name)')
+    .select('*, units(name), properties(name), reservations!inner(booking_status, guests!primary_guest_id(first_name, last_name))')
     .eq('check_in_date', date)
-    .eq('booking_status', 'CONFIRMED')
+    .eq('reservations.booking_status', 'CONFIRMED')
     .not('status', 'in', '("CANCELLED","NO_SHOW")')
     .order('arrival_time', { ascending: true, nullsFirst: false })
 
   const departuresQuery = supabase
     .from('stays')
-    .select('*, units(name), properties(name), guests!primary_guest_id(first_name, last_name)')
+    .select('*, units(name), properties(name), reservations!inner(booking_status, guests!primary_guest_id(first_name, last_name))')
     .eq('check_out_date', date)
-    .eq('booking_status', 'CONFIRMED')
+    .eq('reservations.booking_status', 'CONFIRMED')
     .not('status', 'in', '("CANCELLED","NO_SHOW","BOOKED")')
     .order('departure_time', { ascending: true, nullsFirst: false })
 
   const inHouseQuery = supabase
     .from('stays')
-    .select('*, units(name), properties(name), guests!primary_guest_id(first_name, last_name)')
-    .eq('booking_status', 'CONFIRMED')
+    .select('*, units(name), properties(name), reservations!inner(booking_status, guests!primary_guest_id(first_name, last_name))')
+    .eq('reservations.booking_status', 'CONFIRMED')
     .eq('status', 'CHECKED_IN')
     .lt('check_in_date', date)
     .gt('check_out_date', date)
@@ -269,9 +277,9 @@ export async function getStaysByDate(
   ])
 
   return {
-    arrivals: arrivalsRes.data ?? [],
-    departures: departuresRes.data ?? [],
-    inHouse: inHouseRes.data ?? [],
+    arrivals: (arrivalsRes.data ?? []).map(flattenReservation) as unknown as Stay[],
+    departures: (departuresRes.data ?? []).map(flattenReservation) as unknown as Stay[],
+    inHouse: (inHouseRes.data ?? []).map(flattenReservation) as unknown as Stay[],
   }
 }
 
@@ -310,8 +318,8 @@ export async function getDailyOverview(
 
   let missingRegQuery = supabase
     .from('stays')
-    .select('id', { count: 'exact' })
-    .eq('booking_status', 'CONFIRMED')
+    .select('id, reservations!inner(booking_status)', { count: 'exact' })
+    .eq('reservations.booking_status', 'CONFIRMED')
     .in('registration_status', ['MISSING', 'PARTIAL'])
     .in('status', ['BOOKED', 'CHECKED_IN'])
 

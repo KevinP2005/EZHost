@@ -16,7 +16,7 @@ export type EmailDeliveryStatus = 'SENT' | 'FAILED'
 
 export interface EmailMessage {
   id: string
-  booking_id: string
+  reservation_id: string
   recipient: string
   subject: string | null
   email_type: EmailMessageType

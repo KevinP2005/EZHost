@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { BookingStatus, Stay } from '@/lib/database.types'
+import type { BookingStatus, Reservation, Stay } from '@/lib/database.types'
 import {
   renderBookingEmailTemplate,
   type BookingEmailTemplateData,
@@ -9,6 +9,7 @@ import {
 interface SendBookingEmailInput {
   organizationId: string
   stay: Stay
+  reservation: Reservation
   guestName: string
   recipient: string
   hotelName: string
@@ -54,7 +55,7 @@ function formatFromAddress(propertyName: string, emailAddress: string) {
 
 async function recordEmailDelivery(input: {
   organizationId: string
-  bookingId: string
+  reservationId: string
   recipient: string
   emailType: BookingEmailType
   resendEmailId?: string
@@ -64,7 +65,7 @@ async function recordEmailDelivery(input: {
   const supabase = await createClient()
   const { error } = await supabase.from('email_deliveries').insert({
     organization_id: input.organizationId,
-    booking_id: input.bookingId,
+    reservation_id: input.reservationId,
     recipient: input.recipient,
     email_type: input.emailType,
     resend_email_id: input.resendEmailId ?? null,
@@ -151,9 +152,9 @@ export async function sendBookingEmail(input: SendBookingEmailInput): Promise<Se
       roomName: input.roomName,
       subtotalAmount: input.stay.subtotal_amount != null ? Number(input.stay.subtotal_amount) : undefined,
       extrasAmount: input.stay.extras_amount != null ? Number(input.stay.extras_amount) : undefined,
-      totalPrice: Number(input.stay.total_amount ?? 0),
-      currency: input.stay.currency,
-      bookingReference: input.stay.external_reference ?? input.stay.id,
+      totalPrice: Number(input.reservation.total_amount ?? 0),
+      currency: input.reservation.currency,
+      bookingReference: input.reservation.reservation_number,
       arrivalTime: input.stay.arrival_time ?? undefined,
       hotelEmail: replyTo,
     }
@@ -170,7 +171,7 @@ export async function sendBookingEmail(input: SendBookingEmailInput): Promise<Se
     try {
       await recordEmailDelivery({
         organizationId: input.organizationId,
-        bookingId: input.stay.id,
+        reservationId: input.reservation.id,
         recipient: input.recipient,
         emailType,
         resendEmailId,
@@ -187,7 +188,7 @@ export async function sendBookingEmail(input: SendBookingEmailInput): Promise<Se
     try {
       await recordEmailDelivery({
         organizationId: input.organizationId,
-        bookingId: input.stay.id,
+        reservationId: input.reservation.id,
         recipient: input.recipient,
         emailType,
         status: 'FAILED',

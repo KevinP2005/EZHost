@@ -54,8 +54,8 @@ export default async function GuestDetailPage({ params }: Props) {
 
   let staysQuery = supabase
     .from('stays')
-    .select('id, check_in_date, check_out_date, status, units(name), properties(name)')
-    .eq('primary_guest_id', id)
+    .select('id, check_in_date, check_out_date, status, units(name), properties(name), reservations!inner(primary_guest_id)')
+    .eq('reservations.primary_guest_id', id)
     .order('check_in_date', { ascending: false })
     .limit(20)
 

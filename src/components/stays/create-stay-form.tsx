@@ -1218,7 +1218,6 @@ export function GuestDetailsStep({
           check_out_date: checkOutDate,
           adults: adultCount,
           children: childCount,
-          room_count: roomCount,
           booking_status: bookingStatus,
           rate_code: selectedRate.id,
           rate_label: selectedRate.label,

@@ -9,32 +9,12 @@ function getTodayDateKey() {
   return `${year}-${month}-${day}`
 }
 
-export const createStaySchema = z.object({
-  property_id: z.string().uuid(),
-  unit_id: z.string().uuid(),
-  primary_guest_id: z.string().uuid().optional(),
-  external_reference: z.string().optional(),
-  source: z.enum(['MANUAL', 'IMPORT', 'PMS', 'OTA', 'OTHER']).default('MANUAL'),
-  check_in_date: z.string(),
-  check_out_date: z.string(),
-  arrival_time: z.string().optional(),
-  departure_time: z.string().optional(),
-  adults: z.number().int().min(1).default(1),
-  children: z.number().int().min(0).default(0),
-  breakfast_included: z.boolean().default(false),
-  breakfast_count_adults: z.number().int().min(0).default(0),
-  breakfast_count_children: z.number().int().min(0).default(0),
-  local_tax_applicable: z.boolean().default(false),
-  local_tax_amount: z.number().optional(),
-  notes: z.string().optional(),
-  internal_notes: z.string().optional(),
-})
-
-export type CreateStayInput = z.infer<typeof createStaySchema>
-
+// Stay-level fields only. Reservation-level fields (external_reference,
+// source, booking_status, total_amount, currency, confirmation_preference)
+// are not editable through this schema — external_reference in particular
+// is system-set only (channel manager / import), never user-entered.
 export const updateStaySchema = z.object({
   unit_id: z.string().uuid().optional(),
-  external_reference: z.string().nullable().optional(),
   check_in_date: z.string().optional(),
   check_out_date: z.string().optional(),
   arrival_time: z.string().nullable().optional(),
@@ -47,13 +27,10 @@ export const updateStaySchema = z.object({
   local_tax_applicable: z.boolean().optional(),
   local_tax_amount: z.number().nullable().optional(),
   notes: z.string().nullable().optional(),
-  internal_notes: z.string().nullable().optional(),
   room_label: z.string().nullable().optional(),
   nightly_rate: z.number().min(0).nullable().optional(),
   subtotal_amount: z.number().min(0).nullable().optional(),
   extras_amount: z.number().min(0).nullable().optional(),
-  total_amount: z.number().min(0).nullable().optional(),
-  currency: z.string().min(1).optional(),
 })
 
 export type UpdateStayInput = z.infer<typeof updateStaySchema>
@@ -70,7 +47,6 @@ export const createStayFlowSchema = z.object({
   check_out_date: z.string(),
   adults: z.number().int().min(1),
   children: z.number().int().min(0).default(0),
-  room_count: z.number().int().min(1).default(1),
   booking_status: z.enum(['OFFER', 'CONFIRMED']),
   rate_code: z.string().min(1),
   rate_label: z.string().min(1),
