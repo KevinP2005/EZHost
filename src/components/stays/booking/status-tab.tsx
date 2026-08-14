@@ -405,7 +405,7 @@ export function StatusTab({ stay, selectedStays, allStays, canEdit, onUpdated }:
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <div className="space-y-2 px-4 text-left text-sm font-medium text-foreground">
+          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-xs font-medium text-foreground">
             {scope === 'stay' && activeSelectedStays[0] && <p>{stayLine(activeSelectedStays[0])}</p>}
             {scope === 'stays' && (
               <ul className="list-inside list-disc space-y-0.5">
@@ -423,7 +423,7 @@ export function StatusTab({ stay, selectedStays, allStays, canEdit, onUpdated }:
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>Back</AlertDialogCancel>
+            <AlertDialogCancel variant="secondary">Back</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={confirmCancellation}
