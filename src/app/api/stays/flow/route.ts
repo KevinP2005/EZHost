@@ -62,19 +62,25 @@ export async function POST(request: Request) {
 
     const firstStay = reservation.stays[0]
 
-    // The confirmation template is still single-stay shaped: it renders the
-    // first stay's room/dates together with the reservation total. Good enough
-    // while multi-room mails are not designed yet.
-    const emailResult = await sendBookingEmail({
-      organizationId: property.organization_id,
-      stay: firstStay,
-      reservation,
-      guestName: parsed.data.primary_guest.name,
-      recipient: parsed.data.primary_guest.email,
-      hotelName: property.name,
-      roomName: firstStay?.room_label ?? 'Zimmer',
-      bookingStatus: parsed.data.booking_status,
-    })
+    // Only send when the guest opted in — "do_not_send" must not trigger a
+    // confirmation/offer mail, and must not create an email_deliveries row
+    // that would misleadingly claim one was sent.
+    let emailResult: { ok: boolean; warning?: string } = { ok: true }
+    if (parsed.data.confirmation_preference === 'send') {
+      // The confirmation template is still single-stay shaped: it renders the
+      // first stay's room/dates together with the reservation total. Good enough
+      // while multi-room mails are not designed yet.
+      emailResult = await sendBookingEmail({
+        organizationId: property.organization_id,
+        stay: firstStay,
+        reservation,
+        guestName: parsed.data.primary_guest.name,
+        recipient: parsed.data.primary_guest.email,
+        hotelName: property.name,
+        roomName: firstStay?.room_label ?? 'Zimmer',
+        bookingStatus: parsed.data.booking_status,
+      })
+    }
 
     return NextResponse.json(
       {
@@ -84,7 +90,7 @@ export async function POST(request: Request) {
         // The booking detail page is opened by stay id and renders the whole
         // reservation from there.
         id: firstStay?.id,
-        email_status: emailResult.ok ? 'SENT' : 'FAILED',
+        email_status: parsed.data.confirmation_preference === 'send' ? (emailResult.ok ? 'SENT' : 'FAILED') : 'SKIPPED',
         email_warning: emailResult.warning,
       },
       { status: 201 },
