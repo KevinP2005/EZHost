@@ -6,6 +6,12 @@
 --
 -- The product is not in production yet: existing test bookings are
 -- intentionally discarded (no backfill) so the new schema can be clean.
+--
+-- Every policy/function that touches a column being moved or removed from
+-- `stays` is explicitly dropped before the structural change and recreated
+-- afterwards against the new Reservation/Stay model — no CASCADE is used
+-- anywhere in this migration. (There are no views in the schema to worry
+-- about; confirmed by inspecting 001-005.)
 -- ============================================================
 
 -- ============================================================
@@ -77,20 +83,62 @@ CREATE TRIGGER trg_reservations_number_immutable
 
 ALTER TABLE reservations ENABLE ROW LEVEL SECURITY;
 
+-- Property-scoped, matching the final (migration 002) access model that
+-- `stays` already uses — a RECEPTION profile with access to only some
+-- properties (via profile_property_access) must be limited the same way
+-- for reservations.
 CREATE POLICY "reservations_select" ON reservations FOR SELECT
-  USING (auth_role() = 'SUPER_ADMIN' OR organization_id = auth_organization_id());
+  USING (
+    auth_is_super_admin()
+    OR (organization_id = auth_organization_id() AND auth_role() = 'ORG_ADMIN')
+    OR auth_can_access_property(property_id)
+  );
 
 CREATE POLICY "reservations_insert" ON reservations FOR INSERT
   WITH CHECK (
-    auth_role() = 'SUPER_ADMIN'
-    OR (organization_id = auth_organization_id() AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION'))
+    auth_is_super_admin()
+    OR (
+      organization_id = auth_organization_id()
+      AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION')
+      AND auth_can_access_property(property_id)
+    )
   );
 
 CREATE POLICY "reservations_update" ON reservations FOR UPDATE
   USING (
-    auth_role() = 'SUPER_ADMIN'
-    OR (organization_id = auth_organization_id() AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION'))
+    auth_is_super_admin()
+    OR (
+      organization_id = auth_organization_id()
+      AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION')
+      AND auth_can_access_property(property_id)
+    )
+  )
+  WITH CHECK (
+    auth_is_super_admin()
+    OR (
+      organization_id = auth_organization_id()
+      AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION')
+      AND auth_can_access_property(property_id)
+    )
   );
+
+-- ============================================================
+-- DROP DEPENDENT POLICIES before touching `stays` / `email_deliveries`
+-- ============================================================
+-- None of these policies reference the columns being moved/removed below
+-- (verified by inspecting 001/002/004), so this isn't strictly required for
+-- ALTER TABLE ... DROP COLUMN to succeed — but dropping them explicitly here
+-- means the migration never relies on CASCADE, and it keeps the "old
+-- policy vs. new Reservation-aware policy" boundary visible in one place.
+
+DROP POLICY IF EXISTS "stays_select" ON stays;
+DROP POLICY IF EXISTS "stays_insert" ON stays;
+DROP POLICY IF EXISTS "stays_update" ON stays;
+DROP POLICY IF EXISTS "stay_guests_select" ON stay_guests;
+DROP POLICY IF EXISTS "stay_guests_insert" ON stay_guests;
+DROP POLICY IF EXISTS "stay_guests_delete" ON stay_guests;
+DROP POLICY IF EXISTS "email_deliveries_select" ON email_deliveries;
+DROP POLICY IF EXISTS "email_deliveries_insert" ON email_deliveries;
 
 -- ============================================================
 -- CLEAR EXISTING TEST DATA IN `stays`
@@ -180,8 +228,108 @@ ALTER TABLE email_deliveries
 CREATE INDEX idx_email_deliveries_reservation_id ON email_deliveries(reservation_id);
 
 -- ============================================================
+-- RECREATE POLICIES against the new Reservation/Stay model
+-- ============================================================
+-- Same access rules as before (organization_id / property_id still live
+-- directly on `stays`, unchanged by this migration) — recreated explicitly
+-- rather than left in place, so this migration never depends on a DROP
+-- COLUMN silently leaving old policies intact.
+
+CREATE POLICY "stays_select" ON stays FOR SELECT
+  USING (
+    auth_is_super_admin()
+    OR (organization_id = auth_organization_id() AND auth_role() = 'ORG_ADMIN')
+    OR auth_can_access_property(property_id)
+  );
+
+CREATE POLICY "stays_insert" ON stays FOR INSERT
+  WITH CHECK (
+    auth_is_super_admin()
+    OR (
+      organization_id = auth_organization_id()
+      AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION')
+      AND auth_can_access_property(property_id)
+    )
+  );
+
+CREATE POLICY "stays_update" ON stays FOR UPDATE
+  USING (
+    auth_is_super_admin()
+    OR (
+      organization_id = auth_organization_id()
+      AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION')
+      AND auth_can_access_property(property_id)
+    )
+  )
+  WITH CHECK (
+    auth_is_super_admin()
+    OR (
+      organization_id = auth_organization_id()
+      AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION')
+      AND auth_can_access_property(property_id)
+    )
+  );
+
+CREATE POLICY "stay_guests_select" ON stay_guests FOR SELECT
+  USING (
+    auth_is_super_admin()
+    OR (organization_id = auth_organization_id() AND auth_role() = 'ORG_ADMIN')
+    OR EXISTS (
+      SELECT 1
+      FROM stays s
+      WHERE s.id = stay_guests.stay_id
+        AND auth_can_access_property(s.property_id)
+    )
+  );
+
+CREATE POLICY "stay_guests_insert" ON stay_guests FOR INSERT
+  WITH CHECK (
+    auth_is_super_admin()
+    OR EXISTS (
+      SELECT 1
+      FROM stays s
+      WHERE s.id = stay_guests.stay_id
+        AND s.organization_id = auth_organization_id()
+        AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION')
+        AND auth_can_access_property(s.property_id)
+    )
+  );
+
+CREATE POLICY "stay_guests_delete" ON stay_guests FOR DELETE
+  USING (
+    auth_is_super_admin()
+    OR EXISTS (
+      SELECT 1
+      FROM stays s
+      WHERE s.id = stay_guests.stay_id
+        AND s.organization_id = auth_organization_id()
+        AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION')
+        AND auth_can_access_property(s.property_id)
+    )
+  );
+
+CREATE POLICY "email_deliveries_select" ON email_deliveries FOR SELECT
+  USING (
+    auth_role() = 'SUPER_ADMIN'
+    OR organization_id = auth_organization_id()
+  );
+
+CREATE POLICY "email_deliveries_insert" ON email_deliveries FOR INSERT
+  WITH CHECK (
+    auth_role() = 'SUPER_ADMIN'
+    OR (
+      organization_id = auth_organization_id()
+      AND auth_role() IN ('ORG_ADMIN', 'MANAGER', 'RECEPTION')
+    )
+  );
+
+-- ============================================================
 -- BOOKING CREATION FLOW – Booker + Primary Guest + Reservation + Stay + stay_guests
 -- ============================================================
+-- The old signature (with p_room_count and no p_organization_id-scoped
+-- Reservation) is explicitly dropped first: CREATE OR REPLACE cannot change
+-- a function's parameter list, and this migration doesn't rely on the old
+-- overload being cleaned up implicitly.
 
 DROP FUNCTION IF EXISTS create_stay_booking_flow(
   UUID, UUID, UUID, DATE, DATE, INTEGER, INTEGER, INTEGER, booking_status,
