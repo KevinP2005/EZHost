@@ -3,7 +3,7 @@
 import { format, parseISO } from 'date-fns'
 import { Eye, FileText, RefreshCw } from 'lucide-react'
 
-import { formatMoney as formatMoneyBase } from '@/lib/utils'
+import { formatMoney as formatMoneyBase, stayTotalAmount } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { StatusBadge, housekeepingTone } from './status-badge'
 
@@ -60,8 +60,11 @@ export function ReservationDetails({ stay, stayGuests }: Props) {
     .filter((row) => !row.is_primary_guest && row.guests)
     .map((row) => `${row.guests.first_name} ${row.guests.last_name}`.trim())
 
-  const avgWithProducts = stay.total_amount != null && nights > 0
-    ? stay.total_amount / nights
+  // This stay's own total — not reservations.total_amount, which sums every
+  // stay of the reservation and would misrepresent a single room here.
+  const stayTotal = stayTotalAmount(stay)
+  const avgWithProducts = stayTotal != null && nights > 0
+    ? stayTotal / nights
     : null
 
   // Per-night breakdown: prefer stored price_details, otherwise derive from the nightly rate.
@@ -148,7 +151,7 @@ export function ReservationDetails({ stay, stayGuests }: Props) {
       <Spacer />
       <Row label="Avg. rate (nightly)">{formatMoney(stay.nightly_rate, currency)}</Row>
       <Row label="Avg. price with products (nightly)">{formatMoney(avgWithProducts, currency)}</Row>
-      <Row label="Total amount">{formatMoney(stay.total_amount, currency)}</Row>
+      <Row label="Total amount">{formatMoney(stayTotal, currency)}</Row>
       <Row label="Requested category">{unitTypeLabel(stay.units?.unit_type)}</Row>
       <Row label="Space category">{unitTypeLabel(stay.units?.unit_type)}</Row>
       <Row label="Room Number">

@@ -34,18 +34,28 @@ interface Props {
   stayGuests: any[]
   canEdit: boolean
   onEdit: () => void
+  /** Selection is owned by the parent (BookingDetail) so the left Status tab can react to it. */
+  selectedStayIds: string[]
+  onSelectionChange: (ids: string[]) => void
 }
 
-export function ReservationColumn({ stay, reservationStays, stayGuests, canEdit, onEdit }: Props) {
+export function ReservationColumn({
+  stay,
+  reservationStays,
+  stayGuests,
+  canEdit,
+  onEdit,
+  selectedStayIds,
+  onSelectionChange,
+}: Props) {
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const [expandedIds, setExpandedIds] = useState<string[]>([stay.id])
-  const [selectedIds, setSelectedIds] = useState<string[]>(reservationStays.map((row) => row.id))
   const [lockedIds, setLockedIds] = useState<string[]>([])
 
   const stays = reservationStays.length > 0 ? reservationStays : [stay]
   const totalCount = stays.length
-  const selectedCount = stays.filter((row) => selectedIds.includes(row.id)).length
+  const selectedCount = stays.filter((row) => selectedStayIds.includes(row.id)).length
 
   // The reservation spans the widest range of its stays.
   const checkInDates = stays.map((row) => row.check_in_date).sort()
@@ -107,7 +117,7 @@ export function ReservationColumn({ stay, reservationStays, stayGuests, canEdit,
             <SelectBox
               checked={selectedCount === totalCount}
               onChange={() =>
-                setSelectedIds(selectedCount === totalCount ? [] : stays.map((row) => row.id))
+                onSelectionChange(selectedCount === totalCount ? [] : stays.map((row) => row.id))
               }
             />
             <StatusBadge status={stay.status} />
@@ -131,8 +141,8 @@ export function ReservationColumn({ stay, reservationStays, stayGuests, canEdit,
               <div key={row.id} className="border-b border-border">
                 <div className="grid min-h-[42px] grid-cols-[14px_auto_1fr_auto_29px_18px] items-center gap-x-2.5 px-2.5">
                   <SelectBox
-                    checked={selectedIds.includes(row.id)}
-                    onChange={() => setSelectedIds((current) => toggle(current, row.id))}
+                    checked={selectedStayIds.includes(row.id)}
+                    onChange={() => onSelectionChange(toggle(selectedStayIds, row.id))}
                   />
 
                   <div className="flex items-center gap-2 whitespace-nowrap text-muted-foreground">

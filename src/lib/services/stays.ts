@@ -155,6 +155,64 @@ export async function checkOutStay(stayId: string, organizationId: string, profi
   return data
 }
 
+/**
+ * Cancels exactly the given stay ids in one atomic UPDATE (via the
+ * `cancel_stays` RPC) and logs one activity entry per affected stay.
+ * Used directly for the "Cancel Stays" (subset) scope, and by
+ * `cancelStay`/`cancelReservation` below for the single-stay and
+ * whole-reservation scopes respectively.
+ *
+ * When `reservationId` is given, every id is verified to belong to that
+ * reservation first — defence in depth against a caller passing ids across
+ * reservations (the UI never does this, but the API boundary shouldn't rely
+ * on that alone).
+ */
+export async function cancelStays(
+  stayIds: string[],
+  organizationId: string,
+  profileId: string,
+  reason: string,
+  details?: string,
+  reservationId?: string
+): Promise<Stay[]> {
+  if (stayIds.length === 0) return []
+
+  const supabase = await createClient()
+
+  if (reservationId) {
+    const { data: mismatched, error: checkError } = await supabase
+      .from('stays')
+      .select('id')
+      .in('id', stayIds)
+      .neq('reservation_id', reservationId)
+
+    if (checkError) throw new Error(checkError.message)
+    if (mismatched && mismatched.length > 0) {
+      throw new Error('All selected stays must belong to the same reservation')
+    }
+  }
+
+  const status: StayStatus = reason === 'NO_SHOW' ? 'NO_SHOW' : 'CANCELLED'
+  const note = `Cancellation (${reason})${details ? `: ${details}` : ''}`
+
+  const { data, error } = await supabase.rpc('cancel_stays', {
+    p_stay_ids: stayIds,
+    p_organization_id: organizationId,
+    p_status: status,
+    p_note: note,
+  })
+
+  if (error) throw new Error(error.message)
+
+  const cancelled = (data ?? []) as Stay[]
+  for (const row of cancelled) {
+    await createActivityLog(organizationId, profileId, 'stay_cancelled', 'stay', row.id, { reason }, row.property_id)
+  }
+
+  return cancelled
+}
+
+/** Cancels a single stay. The other stays of its reservation are untouched. */
 export async function cancelStay(
   stayId: string,
   organizationId: string,
@@ -162,36 +220,59 @@ export async function cancelStay(
   reason: string,
   details?: string
 ): Promise<Stay> {
+  const [cancelled] = await cancelStays([stayId], organizationId, profileId, reason, details)
+  if (!cancelled) throw new Error('Stay not found')
+  return cancelled
+}
+
+/**
+ * Reservation-level cancellation: cancels every currently-active stay of the
+ * reservation (already-cancelled/no-show stays are left as-is) and stamps
+ * reservations.cancelled_at. This is the "Cancel Reservation" action — a real
+ * reservation-scoped operation, distinct from cancelling an individual stay.
+ */
+export async function cancelReservation(
+  reservationId: string,
+  organizationId: string,
+  profileId: string,
+  reason: string,
+  details?: string
+): Promise<{ reservation: Reservation; stays: Stay[] }> {
   const supabase = await createClient()
-  const status: StayStatus = reason === 'NO_SHOW' ? 'NO_SHOW' : 'CANCELLED'
 
-  // Free-text details go into the stay's own operative notes (stays no
-  // longer has an internal_notes column — that concept now lives on Reservation).
-  let notes: string | undefined
-  if (details) {
-    const { data: current } = await supabase
-      .from('stays')
-      .select('notes')
-      .eq('id', stayId)
-      .eq('organization_id', organizationId)
-      .single()
-
-    const note = `Cancellation (${reason}): ${details}`
-    notes = current?.notes ? `${current.notes}\n${note}` : note
-  }
-
-  const { data, error } = await supabase
+  const { data: activeStays, error: fetchError } = await supabase
     .from('stays')
-    .update({ status, ...(notes !== undefined ? { notes } : {}) })
-    .eq('id', stayId)
+    .select('id')
+    .eq('reservation_id', reservationId)
+    .eq('organization_id', organizationId)
+    .not('status', 'in', '("CANCELLED","NO_SHOW")')
+
+  if (fetchError) throw new Error(fetchError.message)
+
+  const stayIds = (activeStays ?? []).map((row) => row.id)
+  const cancelled = await cancelStays(stayIds, organizationId, profileId, reason, details, reservationId)
+
+  const { data: reservation, error: reservationError } = await supabase
+    .from('reservations')
+    .update({ cancelled_at: new Date().toISOString() })
+    .eq('id', reservationId)
     .eq('organization_id', organizationId)
     .select()
     .single()
 
-  if (error) throw new Error(error.message)
+  if (reservationError) throw new Error(reservationError.message)
 
-  await createActivityLog(organizationId, profileId, 'stay_cancelled', 'stay', stayId, { reason }, data.property_id)
-  return data
+  await createActivityLog(
+    organizationId,
+    profileId,
+    'reservation_cancelled',
+    'reservation',
+    reservationId,
+    { reason, stay_count: cancelled.length },
+    reservation.property_id
+  )
+
+  return { reservation, stays: cancelled }
 }
 
 export async function updateRegistrationStatus(

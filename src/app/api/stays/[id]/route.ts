@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getProfile } from '@/lib/auth'
-import { updateStay, checkInStay, checkOutStay, updateRegistrationStatus, cancelStay } from '@/lib/services/stays'
+import {
+  updateStay,
+  checkInStay,
+  checkOutStay,
+  updateRegistrationStatus,
+  cancelStay,
+  cancelStays,
+  cancelReservation,
+} from '@/lib/services/stays'
 import { updateStaySchema } from '@/lib/schemas/stays'
 import { assertCanAccessProperty } from '@/lib/services/properties'
 import { createClient } from '@/lib/supabase/server'
@@ -13,6 +21,12 @@ const patchSchema = z.object({
   cancellation_details: z.string().max(500).optional(),
   apply_fee: z.boolean().optional(),
   notify_guest: z.boolean().optional(),
+  // Cancellation scope: 'stay' (default) cancels the URL's own id;
+  // 'stays' cancels exactly stay_ids; 'reservation' cancels every active
+  // stay of the URL stay's reservation. See StatusTab for how each maps to
+  // the "Cancel Stay / Cancel Stays / Cancel Reservation" button.
+  scope: z.enum(['stay', 'stays', 'reservation']).optional().default('stay'),
+  stay_ids: z.array(z.string().uuid()).optional(),
 }).passthrough()
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -37,6 +51,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       registration_status,
       cancellation_reason,
       cancellation_details,
+      scope,
+      stay_ids,
       // Accepted by the cancellation form but not yet persisted: there is no
       // cancellation-fee column, and guest emails are sent explicitly via the composer.
       apply_fee: _applyFee,
@@ -46,7 +62,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const supabase = await createClient()
     const { data: stay, error } = await supabase
       .from('stays')
-      .select('property_id')
+      .select('property_id, reservation_id')
       .eq('id', id)
       .single()
 
@@ -70,7 +86,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (!cancellation_reason) {
         return NextResponse.json({ error: 'Cancellation reason is required' }, { status: 400 })
       }
-      result = await cancelStay(id, orgId, profile.id, cancellation_reason, cancellation_details)
+
+      if (scope === 'reservation') {
+        result = await cancelReservation(stay.reservation_id, orgId, profile.id, cancellation_reason, cancellation_details)
+      } else if (scope === 'stays') {
+        if (!stay_ids || stay_ids.length === 0) {
+          return NextResponse.json({ error: 'stay_ids is required for scope "stays"' }, { status: 400 })
+        }
+        result = await cancelStays(stay_ids, orgId, profile.id, cancellation_reason, cancellation_details, stay.reservation_id)
+      } else {
+        result = await cancelStay(id, orgId, profile.id, cancellation_reason, cancellation_details)
+      }
     } else {
       const parsed = updateStaySchema.safeParse(rest)
       if (!parsed.success) {

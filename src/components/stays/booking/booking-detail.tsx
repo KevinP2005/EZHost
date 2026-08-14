@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, CircleHelp, Plus } from 'lucide-react'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { stayTotalAmount } from '@/lib/utils'
 import { StayDetail } from '@/components/stays/stay-detail'
 import { EditStayForm } from '@/components/stays/edit-stay-form'
 import { MailingTab } from '@/components/stays/mailing/mailing-tab'
@@ -49,6 +50,15 @@ interface Props {
 export function BookingDetail({ stay, reservationStays, stayGuests, notes, canEdit }: Props) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
+
+  // Single source of truth for which stay(s) drive the left-hand Status tab.
+  // Defaults to just the stay this page was opened for — not "all stays" —
+  // so a single-stay reservation and a freshly opened multi-stay one both
+  // start in the well-defined "exactly one stay selected" state.
+  const [selectedStayIds, setSelectedStayIds] = useState<string[]>([stay.id])
+
+  const allStays = reservationStays.length > 0 ? reservationStays : [stay]
+  const selectedStays = allStays.filter((row) => selectedStayIds.includes(row.id))
 
   const guest = stay.guests
   const guestName = guest ? [guest.first_name, guest.last_name].filter(Boolean).join(' ') : ''
@@ -122,7 +132,13 @@ export function BookingDetail({ stay, reservationStays, stayGuests, notes, canEd
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-3.5 lg:grid-cols-[minmax(400px,46%)_minmax(480px,54%)]">
             <div className="min-w-0">
               <TabsContent value="status">
-                <StatusTab stay={stay} stayGuests={stayGuests} canEdit={canEdit} onUpdated={refresh} />
+                <StatusTab
+                  stay={stay}
+                  selectedStays={selectedStays}
+                  allStays={allStays}
+                  canEdit={canEdit}
+                  onUpdated={refresh}
+                />
               </TabsContent>
 
               <TabsContent value="pricing">
@@ -163,6 +179,8 @@ export function BookingDetail({ stay, reservationStays, stayGuests, notes, canEd
               stayGuests={stayGuests}
               canEdit={canEdit}
               onEdit={() => setIsEditing(true)}
+              selectedStayIds={selectedStayIds}
+              onSelectionChange={setSelectedStayIds}
             />
           </div>
         </Tabs>
@@ -176,13 +194,15 @@ function PricingTab({ stay }: { stay: any }) {
   const money = (value: number | null | undefined) =>
     value == null ? '—' : new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(value)
 
+  // This stay's own total, not the reservation-wide total_amount — see
+  // stayTotalAmount() for why those two must stay separate.
   const rows: Array<[string, string]> = [
     ['Rate', stay.rate_label ?? stay.rate_code ?? '—'],
     ['Nightly rate', money(stay.nightly_rate)],
     ['Subtotal', money(stay.subtotal_amount)],
     ['Extras', money(stay.extras_amount)],
     ['Local tax', stay.local_tax_applicable ? money(stay.local_tax_amount) : 'Not applicable'],
-    ['Total', money(stay.total_amount)],
+    ['Total', money(stayTotalAmount(stay))],
   ]
 
   return (
