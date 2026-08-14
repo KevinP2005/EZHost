@@ -40,26 +40,36 @@ const guestFlowSchema = z.object({
   birthDate: z.string().optional(),
 })
 
-export const createStayFlowSchema = z.object({
-  property_id: z.string().uuid(),
-  unit_id: z.string().uuid(),
-  check_in_date: z.string(),
-  check_out_date: z.string(),
+/**
+ * One selected unit category in the booking form. `quantity` is a creation
+ * input only — it is never persisted; the number of booked units is derived
+ * from how many stays the reservation ends up with.
+ */
+export const bookingPositionSchema = z.object({
+  category_key: z.string().min(1),
+  quantity: z.number().int().min(1),
   adults: z.number().int().min(1),
   children: z.number().int().min(0).default(0),
-  booking_status: z.enum(['OFFER', 'CONFIRMED']),
   rate_code: z.string().min(1),
   rate_label: z.string().min(1),
   room_label: z.string().min(1),
   nightly_rate: z.number().min(0),
-  subtotal_amount: z.number().min(0),
-  extras_amount: z.number().min(0).default(0),
-  total_amount: z.number().min(0),
+  price_details: z.record(z.string(), z.unknown()).default({}),
+})
+
+export type BookingPositionInput = z.infer<typeof bookingPositionSchema>
+
+export const createReservationFlowSchema = z.object({
+  property_id: z.string().uuid(),
+  check_in_date: z.string(),
+  check_out_date: z.string(),
+  booking_status: z.enum(['OFFER', 'CONFIRMED']),
   currency: z.string().min(1).default('EUR'),
   confirmation_preference: z.enum(['send', 'do_not_send']),
   internal_notes: z.string().optional(),
-  price_details: z.record(z.string(), z.unknown()).default({}),
+  extras_amount: z.number().min(0).default(0),
   extras_details: z.array(z.record(z.string(), z.unknown())).default([]),
+  positions: z.array(bookingPositionSchema).min(1, 'Select at least one room category.'),
   primary_guest: z.object({
     name: z.string().min(1, 'Primary guest name is required'),
     address: z.string().min(1, 'Address is required'),
@@ -87,6 +97,19 @@ export const createStayFlowSchema = z.object({
       message: 'Check-out must be after check-in.',
     })
   }
+
+  // Each selected category must appear exactly once — quantity carries the count.
+  const seen = new Set<string>()
+  data.positions.forEach((position, index) => {
+    if (seen.has(position.category_key)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['positions', index, 'category_key'],
+        message: 'Each category may only appear once; use quantity instead.',
+      })
+    }
+    seen.add(position.category_key)
+  })
 })
 
-export type CreateStayFlowInput = z.infer<typeof createStayFlowSchema>
+export type CreateReservationFlowInput = z.infer<typeof createReservationFlowSchema>

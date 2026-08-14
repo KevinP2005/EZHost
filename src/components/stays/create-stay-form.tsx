@@ -53,24 +53,25 @@ interface ServiceOption {
   icon: React.ElementType
 }
 
-interface RoomCategory {
-  id: string
-  name: string
+/**
+ * Client-side mirror of UnitCategoryAvailability (src/lib/services/availability.ts).
+ * Declared locally so this client component never pulls in the server module.
+ */
+export interface BookingCategory {
+  categoryKey: string
+  label: string
   description: string
-  available: number
+  unitType: string
   maxAdults: number
   maxChildren: number
   maxOccupancy: number
-  basePrice: number
-}
-
-interface BookingUnitOption {
-  id: string
-  name: string
-  description: string | null
-  unit_type: string
-  capacity_adults: number
-  capacity_children: number
+  physicalUnits: number
+  bookableLimit: number
+  availableUnits: number
+  /** min(bookableLimit, availableUnits) — the Rooms dropdown never exceeds this. */
+  maxSelectable: number
+  availableUnitIds: string[]
+  unitNames: string[]
 }
 
 interface RateOption {
@@ -88,10 +89,26 @@ interface ExtraOption {
   icon: React.ElementType
 }
 
-interface RoomSelection {
-  rooms: number
+/** Per-category form state. Categories are independent — selecting one never deselects another. */
+interface CategorySelection {
+  selected: boolean
+  quantity: number
   adults: number
   children: number
+  rateId: string
+}
+
+/** One entry per selected category, handed to the creation payload. */
+interface BookingPosition {
+  category_key: string
+  quantity: number
+  adults: number
+  children: number
+  rate_code: string
+  rate_label: string
+  room_label: string
+  nightly_rate: number
+  price_details: Record<string, unknown>
 }
 
 interface Props {
@@ -248,39 +265,84 @@ function getRangeDates(startDate: Date | null, endDate: Date | null) {
   return dates
 }
 
-function buildRoomCategories(units: BookingUnitOption[]): RoomCategory[] {
-  return units.map((unit, index) => ({
-    id: unit.id,
-    name: unit.name,
-    description: unit.description || `${unit.unit_type.toLowerCase()} available for direct booking.`,
-    available: 1,
-    maxAdults: Math.max(unit.capacity_adults, 1),
-    maxChildren: Math.max(unit.capacity_children, 0),
-    maxOccupancy: Math.max(unit.capacity_adults + unit.capacity_children, 1),
-    basePrice: defaultRoomBasePrices[index] ?? 390 + index * 35,
-  }))
+function categoryBasePrice(category: BookingCategory, index: number) {
+  return defaultRoomBasePrices[index] ?? 390 + index * 35
 }
 
-function createInitialRoomSelections(roomCategories: RoomCategory[]) {
-  return roomCategories.reduce<Record<string, RoomSelection>>((selections, room) => {
-    selections[room.id] = {
-      rooms: room.available > 0 ? 1 : 0,
-      adults: Math.min(2, room.maxAdults),
+function createInitialSelections(categories: BookingCategory[]) {
+  return categories.reduce<Record<string, CategorySelection>>((selections, category) => {
+    selections[category.categoryKey] = {
+      selected: false,
+      quantity: 1,
+      adults: Math.min(2, category.maxAdults),
       children: 0,
+      rateId: rateOptions[0]?.id ?? '',
     }
 
     return selections
   }, {})
 }
 
-function createInitialPriceInputs(roomCategories: RoomCategory[]) {
-  return roomCategories.reduce<Record<string, string>>((prices, room) => {
+function createInitialPriceInputs(categories: BookingCategory[]) {
+  return categories.reduce<Record<string, string>>((prices, category, index) => {
     rateOptions.forEach((rate) => {
-      prices[`${room.id}:${rate.id}`] = String(room.basePrice + rate.modifier)
+      prices[`${category.categoryKey}:${rate.id}`] = String(categoryBasePrice(category, index) + rate.modifier)
     })
 
     return prices
   }, {})
+}
+
+/**
+ * Turns the form state into the creation payload — exactly one entry per
+ * selected category, with `quantity` carrying how many units of it to book.
+ */
+function buildPositions(
+  categories: BookingCategory[],
+  selections: Record<string, CategorySelection>,
+  priceInputs: Record<string, string>,
+  context: { serviceType: string; nights: number },
+): BookingPosition[] {
+  return categories
+    .filter((category) => selections[category.categoryKey]?.selected && category.maxSelectable > 0)
+    .map((category) => {
+      const selection = selections[category.categoryKey]
+      const rate = rateOptions.find((option) => option.id === selection.rateId) ?? rateOptions[0]
+      const nightlyRate = Number(priceInputs[`${category.categoryKey}:${rate.id}`]) || 0
+
+      return {
+        category_key: category.categoryKey,
+        quantity: Math.min(selection.quantity, category.maxSelectable),
+        adults: selection.adults,
+        children: selection.children,
+        rate_code: rate.id,
+        rate_label: rate.label,
+        room_label: category.label,
+        nightly_rate: nightlyRate,
+        price_details: {
+          service_type: context.serviceType,
+          rate_description: rate.description,
+          nights: context.nights,
+          adults: selection.adults,
+          children: selection.children,
+          category_key: category.categoryKey,
+        },
+      }
+    })
+}
+
+function encodePositions(positions: BookingPosition[]) {
+  return encodeURIComponent(JSON.stringify(positions))
+}
+
+function decodePositions(value?: string): BookingPosition[] {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(decodeURIComponent(value))
+    return Array.isArray(parsed) ? (parsed as BookingPosition[]) : []
+  } catch {
+    return []
+  }
 }
 
 export function CreateServiceStartForm({ properties, initialPropertyId }: Props) {
@@ -393,7 +455,7 @@ interface BookingMatrixProps {
   propertyId: string
   propertyName?: string
   dates?: string
-  units: BookingUnitOption[]
+  categories: BookingCategory[]
 }
 
 interface GuestDetailsStepProps {
@@ -401,14 +463,9 @@ interface GuestDetailsStepProps {
   serviceType: string
   propertyName?: string
   dates?: string
-  roomId?: string
-  rateId?: string
-  rooms?: string
-  adults?: string
-  children?: string
+  positions?: string
   extras?: string
-  nightlyPrice?: string
-  units: BookingUnitOption[]
+  categories: BookingCategory[]
 }
 
 interface MainGuestForm {
@@ -666,22 +723,41 @@ function formatBookingPeriod(dateKeys: string[]) {
   return `${format(firstDate, 'MMM d')} – ${format(lastDate, 'MMM d')}`
 }
 
-export function BookingMatrix({ serviceType, propertyId, propertyName, dates, units }: BookingMatrixProps) {
+export function BookingMatrix({ serviceType, propertyId, propertyName, dates, categories }: BookingMatrixProps) {
   const router = useRouter()
-  const roomCategories = useMemo(() => buildRoomCategories(units), [units])
-  const [selectedRoomId, setSelectedRoomId] = useState(() => roomCategories[0]?.id ?? '')
-  const [selectedRateId, setSelectedRateId] = useState(rateOptions[0]?.id ?? '')
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([])
-  const [roomSelections, setRoomSelections] = useState<Record<string, RoomSelection>>(() => createInitialRoomSelections(roomCategories))
-  const [priceInputs, setPriceInputs] = useState<Record<string, string>>(() => createInitialPriceInputs(roomCategories))
+  const [selections, setSelections] = useState<Record<string, CategorySelection>>(() => createInitialSelections(categories))
+  const [priceInputs, setPriceInputs] = useState<Record<string, string>>(() => createInitialPriceInputs(categories))
   const serviceLabel = getServiceLabel(serviceType)
   const dateKeys = useMemo(() => parseDateKeys(dates), [dates])
   const hasPastDates = hasPastDateKeys(dateKeys)
   const nights = Math.max(dateKeys.length, 1)
 
-  const selectedRoom = roomCategories.find((room) => room.id === selectedRoomId) ?? roomCategories[0]
-  const selectedRate = rateOptions.find((rate) => rate.id === selectedRateId) ?? rateOptions[0]
-  if (!selectedRoom || !selectedRate) {
+  const selectedExtras = extraOptions.filter((extra) => selectedExtraIds.includes(extra.id))
+  const extrasTotal = selectedExtras.reduce((total, extra) => total + extra.price, 0)
+
+  // Every selected category contributes its own line; nothing is collapsed
+  // into a single "selected room" any more.
+  const positions = buildPositions(categories, selections, priceInputs, { serviceType, nights })
+  const lines = positions.map((position) => {
+    const category = categories.find((entry) => entry.categoryKey === position.category_key)
+    return {
+      position,
+      label: category?.label ?? position.room_label,
+      subtotal: position.nightly_rate * nights * position.quantity,
+    }
+  })
+  const roomTotal = lines.reduce((total, line) => total + line.subtotal, 0)
+  const total = roomTotal + extrasTotal
+  const totalRooms = positions.reduce((count, position) => count + position.quantity, 0)
+  const totalGuests = positions.reduce(
+    (count, position) => count + (position.adults + position.children) * position.quantity,
+    0,
+  )
+  const taxPreview = Math.max(nights * 3 * totalGuests, 0)
+  const canContinue = !hasPastDates && positions.length > 0
+
+  if (categories.length === 0) {
     return (
       <Card>
         <CardContent className="pt-6">
@@ -690,14 +766,6 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, un
       </Card>
     )
   }
-  const selectedRoomSelection = roomSelections[selectedRoom.id] ?? { rooms: 1, adults: 2, children: 0 }
-  const selectedExtras = extraOptions.filter((extra) => selectedExtraIds.includes(extra.id))
-  const selectedPriceKey = `${selectedRoom.id}:${selectedRate.id}`
-  const nightlyPrice = Number(priceInputs[selectedPriceKey]) || 0
-  const roomTotal = nightlyPrice * nights * selectedRoomSelection.rooms
-  const extrasTotal = selectedExtras.reduce((total, extra) => total + extra.price, 0)
-  const taxPreview = Math.max(nights * 3 * (selectedRoomSelection.adults + selectedRoomSelection.children), 0)
-  const total = roomTotal + extrasTotal
 
   function toggleExtra(extraId: string) {
     setSelectedExtraIds((current) => (
@@ -707,27 +775,56 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, un
     ))
   }
 
-  function updateRoomSelection(roomId: string, field: keyof RoomSelection, value: string) {
-    setRoomSelections((current) => ({
+  function updateSelection(categoryKey: string, patch: Partial<CategorySelection>) {
+    setSelections((current) => ({
       ...current,
-      [roomId]: {
-        ...current[roomId],
-        [field]: Number(value),
+      [categoryKey]: { ...current[categoryKey], ...patch },
+    }))
+  }
+
+  /** Toggling a category leaves every other category untouched. */
+  function toggleCategory(category: BookingCategory) {
+    if (category.maxSelectable === 0) return
+
+    setSelections((current) => {
+      const entry = current[category.categoryKey]
+      return {
+        ...current,
+        [category.categoryKey]: {
+          ...entry,
+          selected: !entry.selected,
+          quantity: Math.min(Math.max(entry.quantity, 1), category.maxSelectable),
+        },
+      }
+    })
+  }
+
+  /** Picking a rate cell also selects that category, but never deselects others. */
+  function chooseRate(category: BookingCategory, rateId: string) {
+    if (category.maxSelectable === 0) return
+
+    setSelections((current) => ({
+      ...current,
+      [category.categoryKey]: {
+        ...current[category.categoryKey],
+        selected: true,
+        rateId,
+        quantity: Math.min(Math.max(current[category.categoryKey].quantity, 1), category.maxSelectable),
       },
     }))
   }
 
-  function updatePrice(roomId: string, rateId: string, value: string) {
+  function updatePrice(categoryKey: string, rateId: string, value: string) {
     if (!/^\d*$/.test(value)) return
 
     setPriceInputs((current) => ({
       ...current,
-      [`${roomId}:${rateId}`]: value,
+      [`${categoryKey}:${rateId}`]: value,
     }))
   }
 
   function continueToGuestDetails() {
-    if (hasPastDates) return
+    if (!canContinue) return
 
     const params = new URLSearchParams({
       property: propertyId,
@@ -739,12 +836,7 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, un
       params.set('dates', dates)
     }
 
-    params.set('room', selectedRoom.id)
-    params.set('rate', selectedRate.id)
-    params.set('rooms', String(selectedRoomSelection.rooms))
-    params.set('adults', String(selectedRoomSelection.adults))
-    params.set('children', String(selectedRoomSelection.children))
-    params.set('nightlyPrice', String(nightlyPrice))
+    params.set('positions', encodePositions(positions))
 
     if (selectedExtraIds.length > 0) {
       params.set('extras', selectedExtraIds.join(','))
@@ -781,142 +873,182 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, un
                 ))}
               </div>
 
-              {roomCategories.map((room) => (
-                <div
-                  key={room.id}
-                  className="grid grid-cols-[270px_repeat(4,minmax(160px,1fr))] border-b border-border last:border-b-0"
-                >
+              {categories.map((category) => {
+                const selection = selections[category.categoryKey]
+                const soldOut = category.maxSelectable === 0
+                const isSelected = Boolean(selection?.selected)
+
+                return (
                   <div
-                    className={cn(
-                      'px-4 py-4 transition-colors',
-                      selectedRoomId === room.id && 'bg-primary/10',
-                    )}
+                    key={category.categoryKey}
+                    className="grid grid-cols-[270px_repeat(4,minmax(160px,1fr))] border-b border-border last:border-b-0"
                   >
-                    <button
-                      type="button"
-                      onClick={() => setSelectedRoomId(room.id)}
-                      className="block w-full rounded-md text-left transition-colors hover:text-primary"
+                    <div
+                      className={cn(
+                        'px-4 py-4 transition-colors',
+                        isSelected && 'bg-primary/10',
+                        soldOut && 'opacity-60',
+                      )}
                     >
-                      <p className="text-sm font-semibold text-foreground">{room.name}</p>
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{room.description}</p>
-                      <div className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
-                        <span>{room.available} available</span>
-                        <span className="inline-flex items-center gap-1">
-                          <Users className="h-3 w-3" aria-hidden="true" />
-                          up to {room.maxOccupancy}
-                        </span>
-                      </div>
-                    </button>
-
-                    <div className="mt-3 grid grid-cols-3 gap-2.5">
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-medium text-muted-foreground">Rooms</p>
-                        <Select
-                          value={String(roomSelections[room.id]?.rooms ?? 1)}
-                          onValueChange={(value) => updateRoomSelection(room.id, 'rooms', String(value ?? '1'))}
-                        >
-                          <SelectTrigger className="h-8 min-w-[64px] text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="min-w-(--anchor-width)">
-                            {Array.from({ length: Math.max(room.available, 1) }, (_, index) => index + 1).map((value) => (
-                              <SelectItem key={value} value={String(value)}>
-                                {value}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-medium text-muted-foreground">Adults</p>
-                        <Select
-                          value={String(roomSelections[room.id]?.adults ?? 2)}
-                          onValueChange={(value) => updateRoomSelection(room.id, 'adults', String(value ?? '1'))}
-                        >
-                          <SelectTrigger className="h-8 min-w-[64px] text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="min-w-(--anchor-width)">
-                            {Array.from({ length: room.maxAdults }, (_, index) => index + 1).map((value) => (
-                              <SelectItem key={value} value={String(value)}>
-                                {value}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-medium text-muted-foreground">Children</p>
-                        <Select
-                          value={String(roomSelections[room.id]?.children ?? 0)}
-                          onValueChange={(value) => updateRoomSelection(room.id, 'children', String(value ?? '0'))}
-                        >
-                          <SelectTrigger className="h-8 min-w-[64px] text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="min-w-(--anchor-width)">
-                            {Array.from({ length: room.maxChildren + 1 }, (_, index) => index).map((value) => (
-                              <SelectItem key={value} value={String(value)}>
-                                {value}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {rateOptions.map((rate) => {
-                    const active = selectedRoomId === room.id && selectedRateId === rate.id
-                    const priceKey = `${room.id}:${rate.id}`
-                    const price = priceInputs[priceKey] ?? ''
-
-                    return (
-                      <div
-                        key={`${room.id}-${rate.id}`}
+                      <button
+                        type="button"
+                        disabled={soldOut}
+                        onClick={() => toggleCategory(category)}
+                        aria-pressed={isSelected}
                         className={cn(
-                          'flex min-h-[112px] items-center border-l border-border px-4 py-3 transition-colors hover:bg-muted/40',
-                          active && 'bg-primary/10',
+                          'flex w-full items-start gap-2.5 rounded-md text-left transition-colors',
+                          soldOut ? 'cursor-not-allowed' : 'hover:text-primary',
                         )}
                       >
-                        <div className="w-full min-w-0">
-                          <Label className="text-[11px] font-medium text-muted-foreground">EUR / night</Label>
-                          <div className="mt-1 flex items-center gap-4">
-                            <Input
-                              inputMode="numeric"
-                              value={price}
-                              onChange={(event) => updatePrice(room.id, rate.id, event.target.value)}
-                              onFocus={() => {
-                                setSelectedRoomId(room.id)
-                                setSelectedRateId(rate.id)
-                              }}
-                              className="h-10 min-w-0 flex-1 text-sm font-semibold"
-                              aria-label={`${room.name} ${rate.label} price per night`}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedRoomId(room.id)
-                                setSelectedRateId(rate.id)
-                              }}
-                              className={cn(
-                                'flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors',
-                                active
-                                  ? 'border-primary bg-primary text-primary-foreground'
-                                  : 'border-border bg-background text-muted-foreground',
-                              )}
-                            >
-                              {active ? <Check className="h-4 w-4" aria-hidden="true" /> : '+'}
-                            </button>
-                          </div>
+                        <span
+                          className={cn(
+                            'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors',
+                            isSelected
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border bg-background',
+                          )}
+                        >
+                          {isSelected && <Check className="h-3 w-3" aria-hidden="true" />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-foreground">{category.label}</span>
+                          <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">
+                            {category.description}
+                          </span>
+                          <span className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
+                            <span>
+                              {soldOut ? 'Not available' : `${category.maxSelectable} available`}
+                              {category.physicalUnits > 1 && ` of ${category.physicalUnits}`}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <Users className="h-3 w-3" aria-hidden="true" />
+                              up to {category.maxOccupancy}
+                            </span>
+                          </span>
+                        </span>
+                      </button>
+
+                      <div className="mt-3 grid grid-cols-3 gap-2.5">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-medium text-muted-foreground">Rooms</p>
+                          <Select
+                            value={String(selection?.quantity ?? 1)}
+                            disabled={soldOut || !isSelected}
+                            onValueChange={(value) =>
+                              updateSelection(category.categoryKey, { quantity: Number(value ?? '1') })
+                            }
+                          >
+                            <SelectTrigger className="h-8 min-w-[64px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="min-w-(--anchor-width)">
+                              {Array.from(
+                                { length: Math.max(category.maxSelectable, 1) },
+                                (_, index) => index + 1,
+                              ).map((value) => (
+                                <SelectItem key={value} value={String(value)}>
+                                  {value}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-medium text-muted-foreground">Adults</p>
+                          <Select
+                            value={String(selection?.adults ?? 2)}
+                            disabled={soldOut}
+                            onValueChange={(value) =>
+                              updateSelection(category.categoryKey, { adults: Number(value ?? '1') })
+                            }
+                          >
+                            <SelectTrigger className="h-8 min-w-[64px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="min-w-(--anchor-width)">
+                              {Array.from({ length: category.maxAdults }, (_, index) => index + 1).map((value) => (
+                                <SelectItem key={value} value={String(value)}>
+                                  {value}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-medium text-muted-foreground">Children</p>
+                          <Select
+                            value={String(selection?.children ?? 0)}
+                            disabled={soldOut}
+                            onValueChange={(value) =>
+                              updateSelection(category.categoryKey, { children: Number(value ?? '0') })
+                            }
+                          >
+                            <SelectTrigger className="h-8 min-w-[64px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="min-w-(--anchor-width)">
+                              {Array.from({ length: category.maxChildren + 1 }, (_, index) => index).map((value) => (
+                                <SelectItem key={value} value={String(value)}>
+                                  {value}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
-              ))}
+                    </div>
+
+                    {rateOptions.map((rate) => {
+                      const active = isSelected && selection?.rateId === rate.id
+                      const priceKey = `${category.categoryKey}:${rate.id}`
+                      const price = priceInputs[priceKey] ?? ''
+
+                      return (
+                        <div
+                          key={`${category.categoryKey}-${rate.id}`}
+                          className={cn(
+                            'flex min-h-[112px] items-center border-l border-border px-4 py-3 transition-colors',
+                            !soldOut && 'hover:bg-muted/40',
+                            active && 'bg-primary/10',
+                            soldOut && 'opacity-60',
+                          )}
+                        >
+                          <div className="w-full min-w-0">
+                            <Label className="text-[11px] font-medium text-muted-foreground">EUR / night</Label>
+                            <div className="mt-1 flex items-center gap-4">
+                              <Input
+                                inputMode="numeric"
+                                value={price}
+                                disabled={soldOut}
+                                onChange={(event) => updatePrice(category.categoryKey, rate.id, event.target.value)}
+                                className="h-10 min-w-0 flex-1 text-sm font-semibold"
+                                aria-label={`${category.label} ${rate.label} price per night`}
+                              />
+                              <button
+                                type="button"
+                                disabled={soldOut}
+                                onClick={() => chooseRate(category, rate.id)}
+                                aria-label={`Select ${rate.label} for ${category.label}`}
+                                className={cn(
+                                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors',
+                                  active
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-border bg-background text-muted-foreground',
+                                  soldOut && 'cursor-not-allowed',
+                                )}
+                              >
+                                {active ? <Check className="h-4 w-4" aria-hidden="true" /> : '+'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
@@ -977,32 +1109,55 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, un
 
           <div className="space-y-5 p-5">
             <div>
-              <p className="text-xl font-semibold text-foreground">{selectedRoom.name}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{selectedRate.label} · {formatBookingPeriod(dateKeys)}</p>
+              <p className="text-sm text-muted-foreground">{formatBookingPeriod(dateKeys)}</p>
+              {lines.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Select at least one room category to continue.
+                </p>
+              ) : (
+                <div className="mt-2 space-y-2">
+                  {lines.map((line) => (
+                    <div key={line.position.category_key} className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground">
+                          {line.position.quantity} × {line.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {line.position.rate_label} · {line.position.adults} adults
+                          {line.position.children > 0 ? `, ${line.position.children} children` : ''} · each
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-sm font-semibold text-foreground">
+                        {formatCurrency(line.subtotal)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-md border border-border bg-background p-3">
                 <p className="text-xs text-muted-foreground">Rooms</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{selectedRoomSelection.rooms}</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{totalRooms}</p>
               </div>
               <div className="rounded-md border border-border bg-background p-3">
                 <p className="text-xs text-muted-foreground">Nights</p>
                 <p className="mt-1 text-lg font-semibold text-foreground">{nights}</p>
               </div>
               <div className="rounded-md border border-border bg-background p-3">
-                <p className="text-xs text-muted-foreground">Adults</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{selectedRoomSelection.adults}</p>
+                <p className="text-xs text-muted-foreground">Categories</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{positions.length}</p>
               </div>
               <div className="rounded-md border border-border bg-background p-3">
-                <p className="text-xs text-muted-foreground">Children</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{selectedRoomSelection.children}</p>
+                <p className="text-xs text-muted-foreground">Guests</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{totalGuests}</p>
               </div>
             </div>
 
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">Room</span>
+                <span className="text-muted-foreground">Rooms</span>
                 <span className="font-semibold text-foreground">{formatCurrency(roomTotal)}</span>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -1049,7 +1204,7 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, un
               </p>
             )}
 
-            <Button type="button" className="w-full" disabled={hasPastDates} onClick={continueToGuestDetails}>
+            <Button type="button" className="w-full" disabled={!canContinue} onClick={continueToGuestDetails}>
               Continue to guest details
             </Button>
           </div>
@@ -1059,24 +1214,14 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, un
   )
 }
 
-function parsePositiveNumber(value: string | undefined, fallback: number) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback
-}
-
 export function GuestDetailsStep({
   propertyId,
   serviceType,
   propertyName,
   dates,
-  roomId,
-  rateId,
-  rooms,
-  adults,
-  children,
+  positions: encodedPositions,
   extras,
-  nightlyPrice,
-  units,
+  categories,
 }: GuestDetailsStepProps) {
   const router = useRouter()
   const [mainGuest, setMainGuest] = useState<MainGuestForm>({
@@ -1094,31 +1239,54 @@ export function GuestDetailsStep({
   const [accompanyingGuests, setAccompanyingGuests] = useState<AccompanyingGuestForm[]>([])
   const [isSubmittingAs, setIsSubmittingAs] = useState<'CONFIRMED' | 'OFFER' | null>(null)
   const serviceLabel = getServiceLabel(serviceType)
-  const roomCategories = useMemo(() => buildRoomCategories(units), [units])
   const dateKeys = useMemo(() => parseDateKeys(dates), [dates])
   const hasPastDates = hasPastDateKeys(dateKeys)
   const nights = Math.max(dateKeys.length, 1)
-  const selectedRoom = roomCategories.find((room) => room.id === roomId) ?? roomCategories[0]
-  const selectedRate = rateOptions.find((rate) => rate.id === rateId) ?? rateOptions[0]
-  if (!selectedRoom || !selectedRate) {
+  const positions = useMemo(() => decodePositions(encodedPositions), [encodedPositions])
+
+  const checkInDate = dateKeys[0]
+  const checkOutDate = useMemo(() => {
+    if (dateKeys.length === 0) return undefined
+    return format(addDays(new Date(`${dateKeys[dateKeys.length - 1]}T00:00:00`), 1), 'yyyy-MM-dd')
+  }, [dateKeys])
+
+  // Availability is re-read server-side on every render of this step, so a
+  // category that filled up in the meantime surfaces before submitting.
+  const lines = positions.map((position) => {
+    const category = categories.find((entry) => entry.categoryKey === position.category_key)
+    return {
+      position,
+      label: category?.label ?? position.room_label,
+      subtotal: position.nightly_rate * nights * position.quantity,
+      shortfall: category ? Math.max(position.quantity - category.maxSelectable, 0) : position.quantity,
+      available: category?.maxSelectable ?? 0,
+    }
+  })
+  const unavailableLines = lines.filter((line) => line.shortfall > 0)
+
+  const selectedExtraIds = parseDateKeys(extras)
+  const selectedExtras = extraOptions.filter((extra) => selectedExtraIds.includes(extra.id))
+  const roomTotal = lines.reduce((sum, line) => sum + line.subtotal, 0)
+  const extrasTotal = selectedExtras.reduce((total, extra) => total + extra.price, 0)
+  const totalRooms = positions.reduce((count, position) => count + position.quantity, 0)
+  const totalGuests = positions.reduce(
+    (count, position) => count + (position.adults + position.children) * position.quantity,
+    0,
+  )
+  const taxPreview = Math.max(nights * 3 * totalGuests, 0)
+  const total = roomTotal + extrasTotal
+
+  if (positions.length === 0) {
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">No rooms are configured for this property yet.</p>
+          <p className="text-sm text-muted-foreground">
+            No room categories selected. Go back and pick at least one category.
+          </p>
         </CardContent>
       </Card>
     )
   }
-  const roomCount = parsePositiveNumber(rooms, 1)
-  const adultCount = parsePositiveNumber(adults, 2)
-  const childCount = parsePositiveNumber(children, 0)
-  const selectedExtraIds = parseDateKeys(extras)
-  const selectedExtras = extraOptions.filter((extra) => selectedExtraIds.includes(extra.id))
-  const pricePerNight = parsePositiveNumber(nightlyPrice, selectedRoom.basePrice + selectedRate.modifier)
-  const roomTotal = pricePerNight * nights * roomCount
-  const extrasTotal = selectedExtras.reduce((total, extra) => total + extra.price, 0)
-  const taxPreview = Math.max(nights * 3 * (adultCount + childCount), 0)
-  const total = roomTotal + extrasTotal
 
   function updateMainGuest<K extends keyof MainGuestForm>(field: K, value: MainGuestForm[K]) {
     setMainGuest((current) => ({
@@ -1200,10 +1368,17 @@ export function GuestDetailsStep({
       return
     }
 
-    const checkOutDate = format(
-      addDays(new Date(`${dateKeys[dateKeys.length - 1]}T00:00:00`), 1),
-      'yyyy-MM-dd'
-    )
+    if (unavailableLines.length > 0) {
+      toast.error(
+        `Not enough availability for ${unavailableLines.map((line) => line.label).join(', ')}. Please adjust the selection.`,
+      )
+      return
+    }
+
+    if (!checkOutDate) {
+      toast.error('Please select a valid stay period first.')
+      return
+    }
 
     setIsSubmittingAs(bookingStatus)
 
@@ -1213,35 +1388,19 @@ export function GuestDetailsStep({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           property_id: propertyId,
-          unit_id: selectedRoom.id,
-          check_in_date: dateKeys[0],
+          check_in_date: checkInDate,
           check_out_date: checkOutDate,
-          adults: adultCount,
-          children: childCount,
           booking_status: bookingStatus,
-          rate_code: selectedRate.id,
-          rate_label: selectedRate.label,
-          room_label: selectedRoom.name,
-          nightly_rate: pricePerNight,
-          subtotal_amount: roomTotal,
-          extras_amount: extrasTotal,
-          total_amount: total,
           currency: 'EUR',
           confirmation_preference: mainGuest.confirmation,
           internal_notes: mainGuest.notes,
-          price_details: {
-            service_type: serviceType,
-            rate_description: selectedRate.description,
-            nights,
-            rooms: roomCount,
-            adults: adultCount,
-            children: childCount,
-          },
+          extras_amount: extrasTotal,
           extras_details: selectedExtras.map((extra) => ({
             id: extra.id,
             label: extra.label,
             price: extra.price,
           })),
+          positions,
           primary_guest: mainGuest,
           accompanying_guests: accompanyingGuests,
         }),
@@ -1455,7 +1614,7 @@ export function GuestDetailsStep({
           <Button
             type="button"
             size="lg"
-            disabled={isSubmittingAs !== null}
+            disabled={isSubmittingAs !== null || unavailableLines.length > 0}
             onClick={() => submitFlow('CONFIRMED')}
           >
             {isSubmittingAs === 'CONFIRMED' ? 'Saving Booking...' : 'Confirm Booking'}
@@ -1463,7 +1622,7 @@ export function GuestDetailsStep({
           <Button
             type="button"
             size="lg"
-            disabled={isSubmittingAs !== null}
+            disabled={isSubmittingAs !== null || unavailableLines.length > 0}
             onClick={() => submitFlow('OFFER')}
             className="border border-primary/60 bg-primary/15 text-primary hover:bg-primary hover:text-primary-foreground"
           >
@@ -1484,32 +1643,61 @@ export function GuestDetailsStep({
 
           <div className="space-y-5 p-5">
             <div>
-              <p className="text-xl font-semibold text-foreground">{selectedRoom.name}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{selectedRate.label} · {formatBookingPeriod(dateKeys)}</p>
+              <p className="text-sm text-muted-foreground">{formatBookingPeriod(dateKeys)}</p>
+              <div className="mt-2 space-y-2">
+                {lines.map((line) => (
+                  <div key={line.position.category_key} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {line.position.quantity} × {line.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {line.position.rate_label} · {line.position.adults} adults
+                        {line.position.children > 0 ? `, ${line.position.children} children` : ''} · each
+                      </p>
+                      {line.shortfall > 0 && (
+                        <p className="mt-0.5 text-xs font-medium text-destructive">
+                          Only {line.available} available now
+                        </p>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold text-foreground">
+                      {formatCurrency(line.subtotal)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-md border border-border bg-background p-3">
                 <p className="text-xs text-muted-foreground">Rooms</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{roomCount}</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{totalRooms}</p>
               </div>
               <div className="rounded-md border border-border bg-background p-3">
                 <p className="text-xs text-muted-foreground">Nights</p>
                 <p className="mt-1 text-lg font-semibold text-foreground">{nights}</p>
               </div>
               <div className="rounded-md border border-border bg-background p-3">
-                <p className="text-xs text-muted-foreground">Adults</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{adultCount}</p>
+                <p className="text-xs text-muted-foreground">Categories</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{positions.length}</p>
               </div>
               <div className="rounded-md border border-border bg-background p-3">
-                <p className="text-xs text-muted-foreground">Children</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{childCount}</p>
+                <p className="text-xs text-muted-foreground">Guests</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{totalGuests}</p>
               </div>
             </div>
 
+            {unavailableLines.length > 0 && (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                Availability changed for {unavailableLines.map((line) => line.label).join(', ')}. Go back and adjust
+                the selection — nothing has been saved.
+              </p>
+            )}
+
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">Room</span>
+                <span className="text-muted-foreground">Rooms</span>
                 <span className="font-semibold text-foreground">{formatCurrency(roomTotal)}</span>
               </div>
               <div className="flex items-center justify-between gap-3">

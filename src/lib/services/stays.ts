@@ -1,13 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { createActivityLog } from '@/lib/services/activity'
 import type { Reservation, Stay, StayStatus, RegistrationStatus } from '@/lib/database.types'
-import type { CreateStayFlowInput, UpdateStayInput } from '@/lib/schemas/stays'
+import type { CreateReservationFlowInput, UpdateStayInput } from '@/lib/schemas/stays'
 
 // Re-export schema + type so existing imports from this module still work
-export { createStayFlowSchema } from '@/lib/schemas/stays'
-export type { CreateStayFlowInput } from '@/lib/schemas/stays'
+export { createReservationFlowSchema } from '@/lib/schemas/stays'
+export type { CreateReservationFlowInput } from '@/lib/schemas/stays'
 
-export type StayWithReservation = Stay & { reservation: Reservation }
+export type ReservationWithStays = Reservation & { stays: Stay[] }
 
 function splitGuestName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -27,16 +27,22 @@ function splitGuestName(name: string) {
 }
 
 /**
- * Creates Booker + Primary Guest + Reservation + Stay + stay_guests in one
- * transaction via `create_stay_booking_flow`. The UI currently only collects
- * a single guest at booking time, so Booker and Primary Guest are the same
+ * Creates Booker + Primary Guest + Reservation + N Stays + stay_guests in one
+ * transaction via `create_reservation_booking_flow`.
+ *
+ * One stay is created per concrete unit: a position with quantity 2 produces
+ * two stays on two distinct units. Availability is re-validated inside the
+ * transaction, so an insufficient position aborts the entire reservation
+ * rather than persisting a partial booking.
+ *
+ * The UI collects a single guest, so Booker and Primary Guest are the same
  * guest record.
  */
-export async function createStayFromFlow(
+export async function createReservationFromFlow(
   organizationId: string,
   profileId: string,
-  input: CreateStayFlowInput
-): Promise<StayWithReservation> {
+  input: CreateReservationFlowInput
+): Promise<ReservationWithStays> {
   const supabase = await createClient()
 
   const primaryGuestName = splitGuestName(input.primary_guest.name)
@@ -45,27 +51,18 @@ export async function createStayFromFlow(
     date_of_birth: guest.birthDate || null,
   }))
 
-  const { data: stay, error } = await supabase.rpc('create_stay_booking_flow', {
+  const { data: reservation, error } = await supabase.rpc('create_reservation_booking_flow', {
     p_organization_id: organizationId,
     p_property_id: input.property_id,
-    p_unit_id: input.unit_id,
     p_check_in_date: input.check_in_date,
     p_check_out_date: input.check_out_date,
-    p_adults: input.adults,
-    p_children: input.children,
     p_booking_status: input.booking_status,
-    p_rate_code: input.rate_code,
-    p_rate_label: input.rate_label,
-    p_room_label: input.room_label,
-    p_nightly_rate: input.nightly_rate,
-    p_subtotal_amount: input.subtotal_amount,
-    p_extras_amount: input.extras_amount,
-    p_total_amount: input.total_amount,
     p_currency: input.currency,
     p_confirmation_preference: input.confirmation_preference,
     p_internal_notes: input.internal_notes ?? null,
-    p_price_details: input.price_details,
+    p_extras_amount: input.extras_amount,
     p_extras_details: input.extras_details,
+    p_positions: input.positions,
     p_primary_guest: {
       ...primaryGuestName,
       email: input.primary_guest.email,
@@ -81,13 +78,13 @@ export async function createStayFromFlow(
 
   if (error) throw new Error(error.message)
 
-  const { data: reservation, error: reservationError } = await supabase
-    .from('reservations')
+  const { data: stays, error: staysError } = await supabase
+    .from('stays')
     .select('*')
-    .eq('id', stay.reservation_id)
-    .single()
+    .eq('reservation_id', reservation.id)
+    .order('stay_number')
 
-  if (reservationError) throw new Error(reservationError.message)
+  if (staysError) throw new Error(staysError.message)
 
   await createActivityLog(
     organizationId,
@@ -97,14 +94,14 @@ export async function createStayFromFlow(
     reservation.id,
     {
       booking_status: input.booking_status,
-      room_label: input.room_label,
-      total_amount: input.total_amount,
-      currency: input.currency,
+      stay_count: (stays ?? []).length,
+      total_amount: reservation.total_amount,
+      currency: reservation.currency,
     },
     input.property_id
   )
 
-  return { ...stay, reservation }
+  return { ...reservation, stays: stays ?? [] }
 }
 
 export async function updateStay(

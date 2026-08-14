@@ -43,7 +43,7 @@ export default async function StayDetailPage({ params }: Props) {
     notFound()
   }
 
-  const [{ data: stayGuests }, { data: notes }] = await Promise.all([
+  const [{ data: stayGuests }, { data: notes }, { data: siblingStays }] = await Promise.all([
     supabase
       .from('stay_guests')
       .select('*, guests(id, first_name, last_name, email)')
@@ -53,6 +53,13 @@ export default async function StayDetailPage({ params }: Props) {
       .select('*, profiles!created_by_profile_id(name)')
       .eq('stay_id', id)
       .order('created_at', { ascending: false }),
+    // A reservation can hold several stays (one per booked unit); the panel
+    // lists all of them while keeping each one individually actionable.
+    supabase
+      .from('stays')
+      .select('*, units(id, name, unit_type, housekeeping_status)')
+      .eq('reservation_id', stay.reservation_id)
+      .order('stay_number'),
   ])
 
   // Flatten the reservation onto the stay for display: most of the booking
@@ -92,9 +99,23 @@ export default async function StayDetailPage({ params }: Props) {
     booker: reservation?.booker ?? null,
   }
 
+  // Each sibling stay gets the same reservation-level fields flattened on, so
+  // the reservation column can render every row with one shared shape.
+  const reservationStays = (siblingStays ?? []).map((sibling) => ({
+    ...sibling,
+    reservation_number: reservation?.reservation_number ?? null,
+    currency: reservation?.currency ?? 'EUR',
+    booking_status: reservation?.booking_status ?? null,
+    source: reservation?.source ?? null,
+    guests: reservation?.primary_guest ?? null,
+    booker: reservation?.booker ?? null,
+    isActive: sibling.id === stay.id,
+  }))
+
   return (
     <BookingDetail
       stay={stayView}
+      reservationStays={reservationStays}
       stayGuests={stayGuests ?? []}
       notes={notes ?? []}
       canEdit={['SUPER_ADMIN', 'ORG_ADMIN', 'MANAGER', 'RECEPTION'].includes(profile.role)}

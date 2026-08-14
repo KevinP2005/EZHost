@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
 import {
   Check,
@@ -18,29 +19,45 @@ import { StatusBadge } from './status-badge'
 import { ReservationDetails } from './reservation-details'
 
 /**
- * Persistent right-hand reservation column. EZHost models one stay per
- * reservation, so the list renders the current stay; the surrounding structure
- * (selection, lock, collapse) follows the booking overview template.
+ * Persistent right-hand reservation column.
+ *
+ * A reservation holds one stay per booked unit, so every stay of the
+ * reservation gets its own row here. Rows stay individually actionable (each
+ * one can be checked in separately); the reservation itself deliberately has
+ * no combined check-in state.
  */
 
 interface Props {
+  /** The stay whose page is open — its row starts expanded. */
   stay: any
+  reservationStays: any[]
   stayGuests: any[]
   canEdit: boolean
   onEdit: () => void
 }
 
-export function ReservationColumn({ stay, stayGuests, canEdit, onEdit }: Props) {
+export function ReservationColumn({ stay, reservationStays, stayGuests, canEdit, onEdit }: Props) {
+  const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
-  const [expanded, setExpanded] = useState(true)
-  const [selected, setSelected] = useState(true)
-  const [locked, setLocked] = useState(false)
+  const [expandedIds, setExpandedIds] = useState<string[]>([stay.id])
+  const [selectedIds, setSelectedIds] = useState<string[]>(reservationStays.map((row) => row.id))
+  const [lockedIds, setLockedIds] = useState<string[]>([])
 
-  const guest = stay.guests
-  const guestName = guest ? `${guest.first_name} ${guest.last_name}`.trim() : 'Unassigned guest'
-  const roomLabel = stay.room_label ?? stay.units?.name ?? '—'
-  const dateRange = `${format(parseISO(stay.check_in_date), 'dd/MM/yyyy')} - ${format(parseISO(stay.check_out_date), 'dd/MM/yyyy')}`
-  const selectedCount = selected ? 1 : 0
+  const stays = reservationStays.length > 0 ? reservationStays : [stay]
+  const totalCount = stays.length
+  const selectedCount = stays.filter((row) => selectedIds.includes(row.id)).length
+
+  // The reservation spans the widest range of its stays.
+  const checkInDates = stays.map((row) => row.check_in_date).sort()
+  const checkOutDates = stays.map((row) => row.check_out_date).sort()
+  const dateRange = `${format(parseISO(checkInDates[0]), 'dd/MM/yyyy')} - ${format(
+    parseISO(checkOutDates[checkOutDates.length - 1]),
+    'dd/MM/yyyy',
+  )}`
+
+  function toggle(list: string[], id: string) {
+    return list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id]
+  }
 
   return (
     <div className="min-w-0 [--detail-label-width:210px]">
@@ -58,7 +75,7 @@ export function ReservationColumn({ stay, stayGuests, canEdit, onEdit }: Props) 
             <h2 className="text-[15px] leading-5 font-semibold text-foreground">Reservations</h2>
           </div>
           <small className="ml-6 mt-px block text-[9px] text-muted-foreground">
-            {selectedCount} / 1 selected
+            {selectedCount} / {totalCount} selected
           </small>
         </div>
 
@@ -75,11 +92,11 @@ export function ReservationColumn({ stay, stayGuests, canEdit, onEdit }: Props) 
           )}
           <button
             type="button"
-            onClick={() => setLocked(!locked)}
+            onClick={() => setLockedIds(lockedIds.length > 0 ? [] : stays.map((row) => row.id))}
             className="inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-[11px] text-foreground/80 hover:bg-muted hover:text-foreground"
           >
             <Lock className="h-3 w-3" aria-hidden />
-            {locked ? 'Lock' : 'Unlock'}
+            {lockedIds.length > 0 ? 'Lock' : 'Unlock'}
           </button>
         </div>
       </div>
@@ -87,60 +104,108 @@ export function ReservationColumn({ stay, stayGuests, canEdit, onEdit }: Props) 
       {!collapsed && (
         <>
           <div className="grid h-[39px] grid-cols-[14px_auto_1fr_auto_15px] items-center gap-2.5 border-b border-border px-2.5 text-muted-foreground">
-            <SelectBox checked={selected} onChange={() => setSelected(!selected)} />
+            <SelectBox
+              checked={selectedCount === totalCount}
+              onChange={() =>
+                setSelectedIds(selectedCount === totalCount ? [] : stays.map((row) => row.id))
+              }
+            />
             <StatusBadge status={stay.status} />
             <strong className="text-[11px] font-semibold text-muted-foreground">{dateRange}</strong>
-            <span className="text-[10px]">{selectedCount}/1 selected</span>
+            <span className="text-[10px]">
+              {selectedCount}/{totalCount} selected
+            </span>
             <ChevronDown className="h-3.5 w-3.5" aria-hidden />
           </div>
 
-          <div className="border-b border-border">
-            <div className="grid min-h-[42px] grid-cols-[14px_auto_1fr_auto_29px_18px] items-center gap-x-2.5 px-2.5">
-              <SelectBox checked={selected} onChange={() => setSelected(!selected)} />
+          {stays.map((row) => {
+            const isExpanded = expandedIds.includes(row.id)
+            const isLocked = lockedIds.includes(row.id)
+            const guest = row.guests
+            const guestName = guest
+              ? `${guest.first_name} ${guest.last_name}`.trim()
+              : 'Unassigned guest'
+            const roomLabel = row.units?.name ?? row.room_label ?? '—'
 
-              <div className="flex items-center gap-2 whitespace-nowrap text-muted-foreground">
-                <UserRound className="h-4 w-4" aria-hidden />
-                <FileText className="h-4 w-4" aria-hidden />
-                <SlidersHorizontal className="h-4 w-4" aria-hidden />
-                <CreditCard className="h-4 w-4" aria-hidden />
+            return (
+              <div key={row.id} className="border-b border-border">
+                <div className="grid min-h-[42px] grid-cols-[14px_auto_1fr_auto_29px_18px] items-center gap-x-2.5 px-2.5">
+                  <SelectBox
+                    checked={selectedIds.includes(row.id)}
+                    onChange={() => setSelectedIds((current) => toggle(current, row.id))}
+                  />
+
+                  <div className="flex items-center gap-2 whitespace-nowrap text-muted-foreground">
+                    <UserRound className="h-4 w-4" aria-hidden />
+                    <FileText className="h-4 w-4" aria-hidden />
+                    <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                    <CreditCard className="h-4 w-4" aria-hidden />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (row.id !== stay.id) router.push(`/dashboard/stays/${row.id}`)
+                    }}
+                    className="flex min-w-0 flex-col text-left"
+                  >
+                    <strong
+                      className={`truncate text-xs font-medium ${
+                        row.isActive ? 'text-foreground' : 'text-foreground/70 hover:text-foreground'
+                      }`}
+                    >
+                      {guestName}
+                    </strong>
+                    <small className="truncate text-[9px] text-muted-foreground">
+                      {row.stay_number} · {roomLabel}
+                    </small>
+                  </button>
+
+                  <StatusBadge status={row.status} />
+
+                  <button
+                    type="button"
+                    onClick={() => setLockedIds((current) => toggle(current, row.id))}
+                    aria-label="Toggle lock"
+                    className={`flex h-[18px] w-[29px] items-center rounded-full p-0.5 transition-colors ${
+                      isLocked ? 'justify-end bg-primary' : 'justify-start bg-muted-foreground/60'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white ${
+                        isLocked ? 'text-primary' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {isLocked ? (
+                        <Lock className="h-3 w-3" aria-hidden />
+                      ) : (
+                        <CircleUserRound className="h-3 w-3" aria-hidden />
+                      )}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setExpandedIds((current) => toggle(current, row.id))}
+                    aria-label="Expand reservation"
+                    className="flex h-[22px] w-[18px] items-center justify-center text-muted-foreground hover:text-foreground"
+                  >
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      aria-hidden
+                    />
+                  </button>
+                </div>
+
+                {isExpanded && (
+                  <ReservationDetails
+                    stay={row.id === stay.id ? stay : row}
+                    stayGuests={row.id === stay.id ? stayGuests : []}
+                  />
+                )}
               </div>
-
-              <div className="flex min-w-0 flex-col">
-                <strong className="truncate text-xs font-medium text-foreground">{guestName}</strong>
-                <small className="truncate text-[9px] text-muted-foreground">{roomLabel}</small>
-              </div>
-
-              <StatusBadge status={stay.status} />
-
-              <button
-                type="button"
-                onClick={() => setLocked(!locked)}
-                aria-label="Toggle lock"
-                className={`flex h-[18px] w-[29px] items-center rounded-full p-0.5 transition-colors ${
-                  locked ? 'justify-end bg-primary' : 'justify-start bg-muted-foreground/60'
-                }`}
-              >
-                <span
-                  className={`flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white ${
-                    locked ? 'text-primary' : 'text-muted-foreground'
-                  }`}
-                >
-                  {locked ? <Lock className="h-3 w-3" aria-hidden /> : <CircleUserRound className="h-3 w-3" aria-hidden />}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setExpanded(!expanded)}
-                aria-label="Expand reservation"
-                className="flex h-[22px] w-[18px] items-center justify-center text-muted-foreground hover:text-foreground"
-              >
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden />
-              </button>
-            </div>
-
-            {expanded && <ReservationDetails stay={stay} stayGuests={stayGuests} />}
-          </div>
+            )
+          })}
         </>
       )}
     </div>

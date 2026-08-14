@@ -39,12 +39,14 @@ const STUB_TABS = [
 
 interface Props {
   stay: any
+  /** Every stay of this reservation, ordered by stay_number. */
+  reservationStays: any[]
   stayGuests: any[]
   notes: any[]
   canEdit: boolean
 }
 
-export function BookingDetail({ stay, stayGuests, notes, canEdit }: Props) {
+export function BookingDetail({ stay, reservationStays, stayGuests, notes, canEdit }: Props) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
 
@@ -157,6 +159,7 @@ export function BookingDetail({ stay, stayGuests, notes, canEdit }: Props) {
             {/* Persistent across every tab */}
             <ReservationColumn
               stay={stay}
+              reservationStays={reservationStays}
               stayGuests={stayGuests}
               canEdit={canEdit}
               onEdit={() => setIsEditing(true)}

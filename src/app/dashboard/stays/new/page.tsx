@@ -1,7 +1,7 @@
 import { requireRole } from '@/lib/auth'
 import { AvailabilityCalendar, BookingMatrix, CreateServiceStartForm, GuestDetailsStep } from '@/components/stays/create-stay-form'
 import { getPropertyScope, hasPropertyScope } from '@/lib/services/properties'
-import { createClient } from '@/lib/supabase/server'
+import { getCategoryAvailability } from '@/lib/services/availability'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'New Service' }
@@ -60,14 +60,29 @@ interface NewStayPageProps {
     service?: string
     step?: string
     dates?: string
-    room?: string
-    rate?: string
-    rooms?: string
-    adults?: string
-    children?: string
+    /** JSON-encoded booking positions, one per selected category. */
+    positions?: string
     extras?: string
-    nightlyPrice?: string
   }>
+}
+
+/** The `dates` param carries the selected nights; check-out is the day after the last one. */
+function derivePeriod(dates?: string) {
+  const dateKeys = dates
+    ?.split(',')
+    .map((date) => date.trim())
+    .filter(Boolean)
+    .sort() ?? []
+
+  if (dateKeys.length === 0) return { checkInDate: null, checkOutDate: null }
+
+  const lastNight = new Date(`${dateKeys[dateKeys.length - 1]}T00:00:00`)
+  lastNight.setDate(lastNight.getDate() + 1)
+
+  return {
+    checkInDate: dateKeys[0],
+    checkOutDate: lastNight.toISOString().slice(0, 10),
+  }
 }
 
 export default async function NewStayPage({ searchParams }: NewStayPageProps) {
@@ -78,18 +93,6 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
 
   if (!hasPropertyScope(scope)) {
     return <p className="text-muted-foreground text-sm">Select an accommodation before creating a service.</p>
-  }
-
-  async function getBookingUnits(propertyId: string) {
-    const supabase = await createClient()
-    const { data } = await supabase
-      .from('units')
-      .select('id, name, description, unit_type, capacity_adults, capacity_children')
-      .eq('property_id', propertyId)
-      .eq('status', 'ACTIVE')
-      .order('name')
-
-    return data ?? []
   }
 
   if (params.step === 'availability' && params.service && params.property) {
@@ -106,7 +109,12 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
 
   if (params.step === 'booking' && params.service && params.property) {
     const selectedProperty = scope.properties.find((property) => property.id === params.property)
-    const units = await getBookingUnits(params.property)
+    const period = derivePeriod(params.dates)
+    const categories = await getCategoryAvailability({
+      propertyId: params.property,
+      checkInDate: period.checkInDate,
+      checkOutDate: period.checkOutDate,
+    })
 
     return (
       <div className="flex min-h-[calc(100vh-7rem)] items-center justify-center py-6">
@@ -118,7 +126,7 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
             propertyId={params.property}
             propertyName={selectedProperty?.name}
             dates={params.dates}
-            units={units}
+            categories={categories}
           />
         </div>
       </div>
@@ -127,7 +135,14 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
 
   if (params.step === 'guest-details' && params.service && params.property) {
     const selectedProperty = scope.properties.find((property) => property.id === params.property)
-    const units = await getBookingUnits(params.property)
+    const period = derivePeriod(params.dates)
+    // Re-read availability here too: the guest step shows the final summary and
+    // must not present a category that filled up while the form was open.
+    const categories = await getCategoryAvailability({
+      propertyId: params.property,
+      checkInDate: period.checkInDate,
+      checkOutDate: period.checkOutDate,
+    })
 
     return (
       <div className="flex min-h-[calc(100vh-7rem)] items-center justify-center py-6">
@@ -139,14 +154,9 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
             serviceType={params.service}
             propertyName={selectedProperty?.name}
             dates={params.dates}
-            roomId={params.room}
-            rateId={params.rate}
-            rooms={params.rooms}
-            adults={params.adults}
-            children={params.children}
+            positions={params.positions}
             extras={params.extras}
-            nightlyPrice={params.nightlyPrice}
-            units={units}
+            categories={categories}
           />
         </div>
       </div>

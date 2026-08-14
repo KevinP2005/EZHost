@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 
 import { getProfile } from '@/lib/auth'
-import { createClient } from '@/lib/supabase/server'
 import { assertCanAccessProperty } from '@/lib/services/properties'
-import { createStayFlowSchema, createStayFromFlow } from '@/lib/services/stays'
+import { createReservationFlowSchema, createReservationFromFlow } from '@/lib/services/stays'
+import { getCategoryAvailability } from '@/lib/services/availability'
 import { sendBookingEmail } from '@/lib/services/email'
 
 export async function POST(request: Request) {
@@ -16,50 +16,95 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const parsed = createStayFlowSchema.safeParse(body)
+  const parsed = createReservationFlowSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
   try {
     const property = await assertCanAccessProperty(profile, parsed.data.property_id)
-    const supabase = await createClient()
-    const { data: unit, error: unitError } = await supabase
-      .from('units')
-      .select('id, name')
-      .eq('id', parsed.data.unit_id)
-      .eq('property_id', parsed.data.property_id)
-      .single()
 
-    if (unitError || !unit) {
-      return NextResponse.json({ error: 'Selected room is not available for this property.' }, { status: 400 })
+    // Pre-flight check against the same availability calculation the form used,
+    // so an over-booked position fails with a readable message instead of a raw
+    // Postgres exception. The RPC re-checks this inside the transaction — that
+    // remains the authoritative guard against concurrent bookings.
+    const availability = await getCategoryAvailability({
+      propertyId: parsed.data.property_id,
+      checkInDate: parsed.data.check_in_date,
+      checkOutDate: parsed.data.check_out_date,
+    })
+
+    for (const position of parsed.data.positions) {
+      const category = availability.find((entry) => entry.categoryKey === position.category_key)
+
+      if (!category) {
+        return NextResponse.json(
+          { error: 'A selected room category is no longer available for this property.' },
+          { status: 409 },
+        )
+      }
+
+      if (position.quantity > category.maxSelectable) {
+        return NextResponse.json(
+          {
+            error: `Only ${category.maxSelectable} × ${category.label} available for the selected period (requested ${position.quantity}).`,
+          },
+          { status: 409 },
+        )
+      }
     }
 
-    const stay = await createStayFromFlow(property.organization_id, profile.id, parsed.data)
+    const reservation = await createReservationFromFlow(
+      property.organization_id,
+      profile.id,
+      parsed.data,
+    )
+
+    const firstStay = reservation.stays[0]
+
+    // The confirmation template is still single-stay shaped: it renders the
+    // first stay's room/dates together with the reservation total. Good enough
+    // while multi-room mails are not designed yet.
     const emailResult = await sendBookingEmail({
       organizationId: property.organization_id,
-      stay,
-      reservation: stay.reservation,
+      stay: firstStay,
+      reservation,
       guestName: parsed.data.primary_guest.name,
       recipient: parsed.data.primary_guest.email,
       hotelName: property.name,
-      roomName: parsed.data.room_label || unit.name,
+      roomName: firstStay?.room_label ?? 'Zimmer',
       bookingStatus: parsed.data.booking_status,
     })
 
     return NextResponse.json(
       {
-        ...stay,
+        reservation_id: reservation.id,
+        reservation_number: reservation.reservation_number,
+        stay_ids: reservation.stays.map((stay) => stay.id),
+        // The booking detail page is opened by stay id and renders the whole
+        // reservation from there.
+        id: firstStay?.id,
         email_status: emailResult.ok ? 'SENT' : 'FAILED',
         email_warning: emailResult.warning,
       },
-      { status: 201 }
+      { status: 201 },
     )
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to save booking flow'
-    return NextResponse.json(
-      { error: message },
-      { status: message === 'Property access denied' ? 403 : 500 }
-    )
+
+    if (message === 'Property access denied') {
+      return NextResponse.json({ error: message }, { status: 403 })
+    }
+
+    // Raised by create_reservation_booking_flow when availability changed
+    // between rendering the form and committing the reservation.
+    if (message.includes('Not enough available units')) {
+      return NextResponse.json(
+        { error: 'Availability changed while booking. Nothing was saved — please review and try again.' },
+        { status: 409 },
+      )
+    }
+
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
