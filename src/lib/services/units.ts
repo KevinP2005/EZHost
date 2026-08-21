@@ -48,7 +48,7 @@ export async function getUnits(organizationId: string | null, propertyId?: strin
   const supabase = await createClient()
   let query = supabase
     .from('units')
-    .select('*, properties(name)')
+    .select('*, properties(name), unit_categories(name, unit_type, capacity_adults, capacity_children)')
     .order('name')
 
   if (organizationId) query = query.eq('organization_id', organizationId)

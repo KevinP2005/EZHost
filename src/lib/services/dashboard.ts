@@ -38,9 +38,9 @@ function getStayGuest(stay: StayRow) {
 type UnitRow = {
   id: string
   name: string | null
-  unit_type: string | null
   status: string | null
   housekeeping_status: string | null
+  unit_categories?: { unit_type: string | null } | null
 }
 
 type TaskRow = {
@@ -175,7 +175,7 @@ export async function getOwnerDashboardData(
 
   const unitsQuery = supabase
     .from('units')
-    .select('id, name, unit_type, status, housekeeping_status')
+    .select('id, name, status, housekeeping_status, unit_categories(unit_type)')
     .eq('status', 'ACTIVE')
     .order('name')
     .limit(8)
@@ -282,7 +282,7 @@ export async function getOwnerDashboardData(
     return {
       id: unit.id,
       name: unit.name || 'Unnamed unit',
-      type: mapUnitType(unit.unit_type),
+      type: mapUnitType(unit.unit_categories?.unit_type ?? null),
       status: mapUnitStatus(unit, currentStay),
       currentGuest: currentStay ? getGuestName(currentStay) : undefined,
       checkOut: currentStay ? format(new Date(currentStay.check_out_date), 'MMM d') : undefined,

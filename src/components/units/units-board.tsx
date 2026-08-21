@@ -85,7 +85,7 @@ export function UnitsBoard({ units, properties, canEdit }: Props) {
               <tr className="border-b bg-muted/30">
                 <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Name</th>
                 <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Property</th>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Type</th>
+                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Category</th>
                 <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Capacity</th>
                 <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Unit Status</th>
                 <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Housekeeping</th>
@@ -97,8 +97,12 @@ export function UnitsBoard({ units, properties, canEdit }: Props) {
                 <tr key={unit.id} className="border-b last:border-0 hover:bg-muted/20">
                   <td className="px-4 py-3 font-medium">{unit.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{(unit as any).properties?.name ?? '—'}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{unit.unit_type}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{unit.capacity_adults} adults · {unit.capacity_children} children</td>
+                  <td className="px-4 py-3 text-muted-foreground">{unit.unit_categories?.name ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {unit.unit_categories
+                      ? `${unit.unit_categories.capacity_adults} adults · ${unit.unit_categories.capacity_children} children`
+                      : '—'}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-1.5 py-0.5 rounded ${statusColors[unit.status]}`}>{unit.status}</span>
                   </td>

@@ -54,6 +54,8 @@ export function ReservationDetails({ stay, stayGuests }: Props) {
   const booker = stay.booker
   const currency: string = stay.currency ?? 'EUR'
   const nights = nightsBetween(stay.check_in_date, stay.check_out_date)
+  const category = stay.units?.unit_categories
+  const categoryLabel = category?.name ?? unitTypeLabel(category?.unit_type)
 
   const bookerName = booker ? `${booker.first_name} ${booker.last_name}`.trim() : null
   const companions = (stayGuests ?? [])
@@ -152,8 +154,8 @@ export function ReservationDetails({ stay, stayGuests }: Props) {
       <Row label="Avg. rate (nightly)">{formatMoney(stay.nightly_rate, currency)}</Row>
       <Row label="Avg. price with products (nightly)">{formatMoney(avgWithProducts, currency)}</Row>
       <Row label="Total amount">{formatMoney(stayTotal, currency)}</Row>
-      <Row label="Requested category">{unitTypeLabel(stay.units?.unit_type)}</Row>
-      <Row label="Space category">{unitTypeLabel(stay.units?.unit_type)}</Row>
+      <Row label="Requested category">{categoryLabel}</Row>
+      <Row label="Space category">{categoryLabel}</Row>
       <Row label="Room Number">
         {stay.units?.name ? (
           <span className="inline-flex items-center gap-2">

@@ -23,7 +23,7 @@ export default async function StayDetailPage({ params }: Props) {
     .from('stays')
     .select(`
       *,
-      units(id, name, unit_type, housekeeping_status),
+      units(id, name, housekeeping_status, unit_categories(name, unit_type, capacity_adults, capacity_children)),
       properties(id, name),
       reservations(
         *,
@@ -57,7 +57,7 @@ export default async function StayDetailPage({ params }: Props) {
     // lists all of them while keeping each one individually actionable.
     supabase
       .from('stays')
-      .select('*, units(id, name, unit_type, housekeeping_status)')
+      .select('*, units(id, name, housekeeping_status, unit_categories(name, unit_type, capacity_adults, capacity_children))')
       .eq('reservation_id', stay.reservation_id)
       .order('stay_number'),
   ])

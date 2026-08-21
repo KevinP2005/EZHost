@@ -58,7 +58,7 @@ interface ServiceOption {
  * Declared locally so this client component never pulls in the server module.
  */
 export interface BookingCategory {
-  categoryKey: string
+  categoryId: string
   label: string
   description: string
   unitType: string
@@ -100,7 +100,7 @@ interface CategorySelection {
 
 /** One entry per selected category, handed to the creation payload. */
 interface BookingPosition {
-  category_key: string
+  category_id: string
   quantity: number
   adults: number
   children: number
@@ -271,7 +271,7 @@ function categoryBasePrice(category: BookingCategory, index: number) {
 
 function createInitialSelections(categories: BookingCategory[]) {
   return categories.reduce<Record<string, CategorySelection>>((selections, category) => {
-    selections[category.categoryKey] = {
+    selections[category.categoryId] = {
       selected: false,
       quantity: 1,
       adults: Math.min(2, category.maxAdults),
@@ -286,7 +286,7 @@ function createInitialSelections(categories: BookingCategory[]) {
 function createInitialPriceInputs(categories: BookingCategory[]) {
   return categories.reduce<Record<string, string>>((prices, category, index) => {
     rateOptions.forEach((rate) => {
-      prices[`${category.categoryKey}:${rate.id}`] = String(categoryBasePrice(category, index) + rate.modifier)
+      prices[`${category.categoryId}:${rate.id}`] = String(categoryBasePrice(category, index) + rate.modifier)
     })
 
     return prices
@@ -304,14 +304,14 @@ function buildPositions(
   context: { serviceType: string; nights: number },
 ): BookingPosition[] {
   return categories
-    .filter((category) => selections[category.categoryKey]?.selected && category.maxSelectable > 0)
+    .filter((category) => selections[category.categoryId]?.selected && category.maxSelectable > 0)
     .map((category) => {
-      const selection = selections[category.categoryKey]
+      const selection = selections[category.categoryId]
       const rate = rateOptions.find((option) => option.id === selection.rateId) ?? rateOptions[0]
-      const nightlyRate = Number(priceInputs[`${category.categoryKey}:${rate.id}`]) || 0
+      const nightlyRate = Number(priceInputs[`${category.categoryId}:${rate.id}`]) || 0
 
       return {
-        category_key: category.categoryKey,
+        category_id: category.categoryId,
         quantity: Math.min(selection.quantity, category.maxSelectable),
         adults: selection.adults,
         children: selection.children,
@@ -325,7 +325,7 @@ function buildPositions(
           nights: context.nights,
           adults: selection.adults,
           children: selection.children,
-          category_key: category.categoryKey,
+          category_id: category.categoryId,
         },
       }
     })
@@ -740,7 +740,7 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
   // into a single "selected room" any more.
   const positions = buildPositions(categories, selections, priceInputs, { serviceType, nights })
   const lines = positions.map((position) => {
-    const category = categories.find((entry) => entry.categoryKey === position.category_key)
+    const category = categories.find((entry) => entry.categoryId === position.category_id)
     return {
       position,
       label: category?.label ?? position.room_label,
@@ -775,10 +775,10 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
     ))
   }
 
-  function updateSelection(categoryKey: string, patch: Partial<CategorySelection>) {
+  function updateSelection(categoryId: string, patch: Partial<CategorySelection>) {
     setSelections((current) => ({
       ...current,
-      [categoryKey]: { ...current[categoryKey], ...patch },
+      [categoryId]: { ...current[categoryId], ...patch },
     }))
   }
 
@@ -787,10 +787,10 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
     if (category.maxSelectable === 0) return
 
     setSelections((current) => {
-      const entry = current[category.categoryKey]
+      const entry = current[category.categoryId]
       return {
         ...current,
-        [category.categoryKey]: {
+        [category.categoryId]: {
           ...entry,
           selected: !entry.selected,
           quantity: Math.min(Math.max(entry.quantity, 1), category.maxSelectable),
@@ -805,21 +805,21 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
 
     setSelections((current) => ({
       ...current,
-      [category.categoryKey]: {
-        ...current[category.categoryKey],
+      [category.categoryId]: {
+        ...current[category.categoryId],
         selected: true,
         rateId,
-        quantity: Math.min(Math.max(current[category.categoryKey].quantity, 1), category.maxSelectable),
+        quantity: Math.min(Math.max(current[category.categoryId].quantity, 1), category.maxSelectable),
       },
     }))
   }
 
-  function updatePrice(categoryKey: string, rateId: string, value: string) {
+  function updatePrice(categoryId: string, rateId: string, value: string) {
     if (!/^\d*$/.test(value)) return
 
     setPriceInputs((current) => ({
       ...current,
-      [`${categoryKey}:${rateId}`]: value,
+      [`${categoryId}:${rateId}`]: value,
     }))
   }
 
@@ -874,13 +874,13 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
               </div>
 
               {categories.map((category) => {
-                const selection = selections[category.categoryKey]
+                const selection = selections[category.categoryId]
                 const soldOut = category.maxSelectable === 0
                 const isSelected = Boolean(selection?.selected)
 
                 return (
                   <div
-                    key={category.categoryKey}
+                    key={category.categoryId}
                     className="grid grid-cols-[270px_repeat(4,minmax(160px,1fr))] border-b border-border last:border-b-0"
                   >
                     <div
@@ -923,7 +923,7 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
                             value={String(selection?.quantity ?? 1)}
                             disabled={soldOut || !isSelected}
                             onValueChange={(value) =>
-                              updateSelection(category.categoryKey, { quantity: Number(value ?? '1') })
+                              updateSelection(category.categoryId, { quantity: Number(value ?? '1') })
                             }
                           >
                             <SelectTrigger className="h-8 min-w-[64px] text-xs">
@@ -948,7 +948,7 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
                             value={String(selection?.adults ?? 2)}
                             disabled={soldOut}
                             onValueChange={(value) =>
-                              updateSelection(category.categoryKey, { adults: Number(value ?? '1') })
+                              updateSelection(category.categoryId, { adults: Number(value ?? '1') })
                             }
                           >
                             <SelectTrigger className="h-8 min-w-[64px] text-xs">
@@ -970,7 +970,7 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
                             value={String(selection?.children ?? 0)}
                             disabled={soldOut}
                             onValueChange={(value) =>
-                              updateSelection(category.categoryKey, { children: Number(value ?? '0') })
+                              updateSelection(category.categoryId, { children: Number(value ?? '0') })
                             }
                           >
                             <SelectTrigger className="h-8 min-w-[64px] text-xs">
@@ -990,12 +990,12 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
 
                     {rateOptions.map((rate) => {
                       const active = isSelected && selection?.rateId === rate.id
-                      const priceKey = `${category.categoryKey}:${rate.id}`
+                      const priceKey = `${category.categoryId}:${rate.id}`
                       const price = priceInputs[priceKey] ?? ''
 
                       return (
                         <div
-                          key={`${category.categoryKey}-${rate.id}`}
+                          key={`${category.categoryId}-${rate.id}`}
                           className={cn(
                             'flex min-h-[112px] items-center border-l border-border px-4 py-3 transition-colors',
                             !soldOut && 'hover:bg-muted/40',
@@ -1010,7 +1010,7 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
                                 inputMode="numeric"
                                 value={price}
                                 disabled={soldOut}
-                                onChange={(event) => updatePrice(category.categoryKey, rate.id, event.target.value)}
+                                onChange={(event) => updatePrice(category.categoryId, rate.id, event.target.value)}
                                 className="h-10 min-w-0 flex-1 text-sm font-semibold"
                                 aria-label={`${category.label} ${rate.label} price per night`}
                               />
@@ -1105,7 +1105,7 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
               ) : (
                 <div className="mt-2 space-y-2">
                   {lines.map((line) => (
-                    <div key={line.position.category_key} className="flex items-start justify-between gap-3">
+                    <div key={line.position.category_id} className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-foreground">
                           {line.position.quantity} × {line.label}
@@ -1241,7 +1241,7 @@ export function GuestDetailsStep({
   // Availability is re-read server-side on every render of this step, so a
   // category that filled up in the meantime surfaces before submitting.
   const lines = positions.map((position) => {
-    const category = categories.find((entry) => entry.categoryKey === position.category_key)
+    const category = categories.find((entry) => entry.categoryId === position.category_id)
     return {
       position,
       label: category?.label ?? position.room_label,
@@ -1634,7 +1634,7 @@ export function GuestDetailsStep({
               <p className="text-sm text-muted-foreground">{formatBookingPeriod(dateKeys)}</p>
               <div className="mt-2 space-y-2">
                 {lines.map((line) => (
-                  <div key={line.position.category_key} className="flex items-start justify-between gap-3">
+                  <div key={line.position.category_id} className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground">
                         {line.position.quantity} × {line.label}

@@ -80,16 +80,29 @@ export interface ProfilePropertyAccess {
   created_at: string
 }
 
-export interface Unit {
+export interface UnitCategory {
   id: string
   organization_id: string
   property_id: string
   name: string
+  code: string | null
   unit_type: UnitType
   capacity_adults: number
   capacity_children: number
-  floor: string | null
   description: string | null
+  /** NULL = no administrative cap beyond physical inventory. */
+  bookable_units_limit: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Unit {
+  id: string
+  organization_id: string
+  property_id: string
+  unit_category_id: string
+  name: string
+  floor: string | null
   status: UnitStatus
   housekeeping_status: HousekeepingStatus
   created_at: string

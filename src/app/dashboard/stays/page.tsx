@@ -25,7 +25,7 @@ export default async function StaysPage({ searchParams }: Props) {
     .from('stays')
     .select(`
       *,
-      units(name, unit_type),
+      units(name),
       properties(name),
       reservations(guests!primary_guest_id(first_name, last_name))
     `)

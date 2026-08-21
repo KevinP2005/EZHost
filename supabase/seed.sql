@@ -22,11 +22,22 @@ DECLARE
   v_prop1_id            UUID := gen_random_uuid();
   v_prop2_id            UUID := gen_random_uuid();
 
+  -- Unit categories for property 1 (Hotel Alpenhof)
+  v_cat_room_id     UUID := gen_random_uuid(); -- "Room" — 4 physical units, bookable_units_limit 3
+  v_cat_superior_id UUID := gen_random_uuid(); -- "Superior Room" — same capacity as "Room", still a distinct category
+  v_cat_suite_id    UUID := gen_random_uuid(); -- "Suite"
+
+  -- Unit categories for property 2 (Bergchalet) — one category per physical apartment
+  v_cat_apt_a_id  UUID := gen_random_uuid();
+  v_cat_apt_b_id  UUID := gen_random_uuid();
+  v_cat_apt_c_id  UUID := gen_random_uuid();
+  v_cat_chalet_id UUID := gen_random_uuid();
+
   -- Units for property 1 (Hotel Alpenhof)
   v_room_101  UUID := gen_random_uuid();
   v_room_102  UUID := gen_random_uuid();
   v_room_103  UUID := gen_random_uuid();
-  v_room_201  UUID := gen_random_uuid();
+  v_room_104  UUID := gen_random_uuid();
   v_room_202  UUID := gen_random_uuid();
   v_suite_1   UUID := gen_random_uuid();
 
@@ -84,24 +95,48 @@ BEGIN
   (v_reception_id, v_prop2_id);
 
   -- ============================================================
+  -- UNIT CATEGORIES – Hotel Alpenhof
+  -- ============================================================
+  -- "Room" has 4 physical units but bookable_units_limit caps it at 3, so
+  -- availability never offers the 4th even though it physically exists.
+  -- "Superior Room" intentionally shares Room's exact capacity — categories
+  -- are a real identity now, not derived from type+capacity, so the two
+  -- stay distinct despite the coincidence.
+  INSERT INTO unit_categories (id, organization_id, property_id, name, unit_type, capacity_adults, capacity_children, bookable_units_limit) VALUES
+  (v_cat_room_id,     v_org_id, v_prop1_id, 'Room',          'ROOM', 2, 1, 3),
+  (v_cat_superior_id, v_org_id, v_prop1_id, 'Superior Room', 'ROOM', 2, 1, NULL),
+  (v_cat_suite_id,    v_org_id, v_prop1_id, 'Suite',         'ROOM', 2, 0, NULL);
+
+  -- ============================================================
+  -- UNIT CATEGORIES – Bergchalet
+  -- ============================================================
+  -- Each category has exactly one physical unit, so at most 1 is ever
+  -- selectable per category — the "chalet apartments never allow x2" case.
+  INSERT INTO unit_categories (id, organization_id, property_id, name, unit_type, capacity_adults, capacity_children) VALUES
+  (v_cat_apt_a_id,  v_org_id, v_prop2_id, 'Apartment A', 'APARTMENT', 2, 2),
+  (v_cat_apt_b_id,  v_org_id, v_prop2_id, 'Apartment B', 'APARTMENT', 4, 2),
+  (v_cat_apt_c_id,  v_org_id, v_prop2_id, 'Apartment C', 'APARTMENT', 2, 0),
+  (v_cat_chalet_id, v_org_id, v_prop2_id, 'Chalet',       'CHALET',   6, 4);
+
+  -- ============================================================
   -- UNITS – Hotel Alpenhof
   -- ============================================================
-  INSERT INTO units (id, organization_id, property_id, name, unit_type, capacity_adults, capacity_children, floor, status, housekeeping_status) VALUES
-  (v_room_101, v_org_id, v_prop1_id, 'Room 101', 'ROOM', 2, 0, '1', 'ACTIVE', 'DIRTY'),
-  (v_room_102, v_org_id, v_prop1_id, 'Room 102', 'ROOM', 2, 1, '1', 'ACTIVE', 'CLEAN'),
-  (v_room_103, v_org_id, v_prop1_id, 'Room 103', 'ROOM', 2, 0, '1', 'ACTIVE', 'DIRTY'),
-  (v_room_201, v_org_id, v_prop1_id, 'Room 201', 'ROOM', 2, 0, '2', 'ACTIVE', 'CLEAN'),
-  (v_room_202, v_org_id, v_prop1_id, 'Room 202', 'ROOM', 3, 1, '2', 'ACTIVE', 'INSPECTED'),
-  (v_suite_1,  v_org_id, v_prop1_id, 'Suite 301', 'ROOM', 2, 0, '3', 'ACTIVE', 'CLEAN');
+  INSERT INTO units (id, organization_id, property_id, unit_category_id, name, floor, status, housekeeping_status) VALUES
+  (v_room_101, v_org_id, v_prop1_id, v_cat_room_id,     'Room 101',  '1', 'ACTIVE', 'DIRTY'),
+  (v_room_102, v_org_id, v_prop1_id, v_cat_room_id,     'Room 102',  '1', 'ACTIVE', 'CLEAN'),
+  (v_room_103, v_org_id, v_prop1_id, v_cat_room_id,     'Room 103',  '1', 'ACTIVE', 'DIRTY'),
+  (v_room_104, v_org_id, v_prop1_id, v_cat_room_id,     'Room 104',  '1', 'ACTIVE', 'CLEAN'),
+  (v_room_202, v_org_id, v_prop1_id, v_cat_superior_id, 'Room 202',  '2', 'ACTIVE', 'INSPECTED'),
+  (v_suite_1,  v_org_id, v_prop1_id, v_cat_suite_id,    'Suite 301', '3', 'ACTIVE', 'CLEAN');
 
   -- ============================================================
   -- UNITS – Bergchalet
   -- ============================================================
-  INSERT INTO units (id, organization_id, property_id, name, unit_type, capacity_adults, capacity_children, status, housekeeping_status) VALUES
-  (v_apt_a,   v_org_id, v_prop2_id, 'Apartment A', 'APARTMENT', 2, 2, 'ACTIVE', 'DIRTY'),
-  (v_apt_b,   v_org_id, v_prop2_id, 'Apartment B', 'APARTMENT', 4, 2, 'ACTIVE', 'CLEAN'),
-  (v_apt_c,   v_org_id, v_prop2_id, 'Apartment C', 'APARTMENT', 2, 0, 'ACTIVE', 'INSPECTED'),
-  (v_chalet_1, v_org_id, v_prop2_id, 'Chalet Almrausch', 'CHALET', 6, 4, 'ACTIVE', 'CLEAN');
+  INSERT INTO units (id, organization_id, property_id, unit_category_id, name, status, housekeeping_status) VALUES
+  (v_apt_a,    v_org_id, v_prop2_id, v_cat_apt_a_id,  'Apartment A',      'ACTIVE', 'DIRTY'),
+  (v_apt_b,    v_org_id, v_prop2_id, v_cat_apt_b_id,  'Apartment B',      'ACTIVE', 'CLEAN'),
+  (v_apt_c,    v_org_id, v_prop2_id, v_cat_apt_c_id,  'Apartment C',      'ACTIVE', 'INSPECTED'),
+  (v_chalet_1, v_org_id, v_prop2_id, v_cat_chalet_id, 'Chalet Almrausch', 'ACTIVE', 'CLEAN');
 
   -- ============================================================
   -- GUESTS
@@ -162,7 +197,7 @@ BEGIN
     RETURNING id
   )
   INSERT INTO stays (organization_id, property_id, unit_id, reservation_id, check_in_date, check_out_date, departure_time, adults, children, status, breakfast_included, breakfast_count_adults, breakfast_count_children, local_tax_applicable, local_tax_amount, registration_status, notes)
-  SELECT v_org_id, v_prop1_id, v_room_201, r.id, today_date - 1, today_date + 3, '11:00', 2, 0, 'CHECKED_IN', TRUE, 2, 0, TRUE, 8.00, 'COMPLETE', 'Vegetarian breakfast' FROM r;
+  SELECT v_org_id, v_prop1_id, v_room_104, r.id, today_date - 1, today_date + 3, '11:00', 2, 0, 'CHECKED_IN', TRUE, 2, 0, TRUE, 8.00, 'COMPLETE', 'Vegetarian breakfast' FROM r;
 
   WITH r AS (
     INSERT INTO reservations (organization_id, property_id, booker_id, primary_guest_id, booking_status, total_amount, currency)
@@ -220,7 +255,7 @@ BEGIN
   -- ============================================================
   INSERT INTO breakfast_items (organization_id, property_id, unit_id, date, adults_count, children_count, allergies, special_requests, status) VALUES
   (v_org_id, v_prop1_id, v_room_102, today_date, 2, 0, NULL,    NULL,            'PLANNED'),
-  (v_org_id, v_prop1_id, v_room_201, today_date, 2, 0, NULL,    'Vegetarian',    'PLANNED'),
+  (v_org_id, v_prop1_id, v_room_104, today_date, 2, 0, NULL,    'Vegetarian',    'PLANNED'),
   (v_org_id, v_prop1_id, v_room_202, today_date, 2, 2, NULL,    'Extra children portion', 'PLANNED'),
   (v_org_id, v_prop1_id, v_suite_1,  today_date, 2, 0, NULL,    NULL,            'PLANNED'),
   (v_org_id, v_prop1_id, v_room_101, today_date, 2, 0, 'Nut allergy', NULL,     'PLANNED'),
@@ -245,7 +280,7 @@ BEGIN
   (v_org_id, v_prop1_id, v_reception_id, 'RECEPTION',     'VIP guest arriving at 15:00 – prepare welcome gift and flowers.', 'INTERNAL'),
   (v_org_id, v_prop1_id, v_org_admin_id, 'MANAGEMENT',    'Weekly staff meeting on Friday at 09:00 in the office.', 'MANAGEMENT_ONLY'),
   (v_org_id, v_prop1_id, v_reception_id, 'HOUSEKEEPING',  'Extra towels needed for Room 202 – family with children.', 'INTERNAL'),
-  (v_org_id, v_prop2_id, v_org_admin_id, 'KITCHEN',       'Vegetarian breakfast for Room 201 – please prepare yogurt plate.', 'INTERNAL'),
+  (v_org_id, v_prop1_id, v_org_admin_id, 'KITCHEN',       'Vegetarian breakfast for Room 104 – please prepare yogurt plate.', 'INTERNAL'),
   (v_org_id, v_prop1_id, v_reception_id, 'GENERAL',       'Parking space #3 reserved for the arriving couple in Room 101.', 'INTERNAL');
 
   -- ============================================================

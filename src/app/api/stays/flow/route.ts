@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     })
 
     for (const position of parsed.data.positions) {
-      const category = availability.find((entry) => entry.categoryKey === position.category_key)
+      const category = availability.find((entry) => entry.categoryId === position.category_id)
 
       if (!category) {
         return NextResponse.json(

@@ -46,7 +46,7 @@ const guestFlowSchema = z.object({
  * from how many stays the reservation ends up with.
  */
 export const bookingPositionSchema = z.object({
-  category_key: z.string().min(1),
+  category_id: z.string().uuid(),
   quantity: z.number().int().min(1),
   adults: z.number().int().min(1),
   children: z.number().int().min(0).default(0),
@@ -101,14 +101,14 @@ export const createReservationFlowSchema = z.object({
   // Each selected category must appear exactly once — quantity carries the count.
   const seen = new Set<string>()
   data.positions.forEach((position, index) => {
-    if (seen.has(position.category_key)) {
+    if (seen.has(position.category_id)) {
       ctx.addIssue({
         code: 'custom',
-        path: ['positions', index, 'category_key'],
+        path: ['positions', index, 'category_id'],
         message: 'Each category may only appear once; use quantity instead.',
       })
     }
-    seen.add(position.category_key)
+    seen.add(position.category_id)
   })
 })
 
