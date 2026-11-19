@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { ArrowLeft, Eye, EyeOff, Info, Loader2 } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useForm, type UseFormRegister } from 'react-hook-form'
@@ -141,6 +142,14 @@ export function LoginForm() {
               register={passwordForm.register}
               error={passwordForm.formState.errors.password?.message}
             />
+            <div className="mt-2 text-right">
+              <Link
+                href={`/auth/forgot-password?email=${encodeURIComponent(submittedEmail)}`}
+                className="text-[12.5px] text-zinc-500 transition-colors duration-150 hover:text-zinc-300"
+              >
+                Passwort vergessen?
+              </Link>
+            </div>
           </div>
 
           <button
