@@ -1,10 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 
@@ -52,13 +49,6 @@ export function UnitsBoard({ units, properties, canEdit }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Units</h1>
-        {canEdit && (
-          <Link href="/dashboard/units/new">
-            <Button size="sm" className="gap-1.5">
-              <Plus className="h-4 w-4" /> New Unit
-            </Button>
-          </Link>
-        )}
       </div>
 
       <div className="flex gap-2">
@@ -76,7 +66,6 @@ export function UnitsBoard({ units, properties, canEdit }: Props) {
       {filtered.length === 0 ? (
         <div className="py-16 text-center">
           <p className="text-muted-foreground">No units found.</p>
-          {canEdit && <Link href="/dashboard/units/new"><Button variant="outline" size="sm" className="mt-4">Create first unit</Button></Link>}
         </div>
       ) : (
         <div className="rounded-lg border bg-card overflow-hidden">

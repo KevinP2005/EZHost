@@ -40,7 +40,7 @@ type UnitRow = {
   name: string | null
   status: string | null
   housekeeping_status: string | null
-  unit_categories?: { unit_type: string | null } | null
+  unit_categories?: { name: string | null } | null
 }
 
 type TaskRow = {
@@ -88,15 +88,6 @@ function mapTaskPriority(priority: string | null): Task['priority'] {
   if (priority === 'HIGH') return 'high'
   if (priority === 'LOW') return 'low'
   return 'medium'
-}
-
-function mapUnitType(unitType: string | null) {
-  if (!unitType) return 'Unit'
-
-  return unitType
-    .split('_')
-    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
-    .join(' ')
 }
 
 function mapUnitStatus(unit: UnitRow, currentStay?: StayRow): Unit['status'] {
@@ -175,7 +166,7 @@ export async function getOwnerDashboardData(
 
   const unitsQuery = supabase
     .from('units')
-    .select('id, name, status, housekeeping_status, unit_categories(unit_type)')
+    .select('id, name, status, housekeeping_status, unit_categories(name)')
     .eq('status', 'ACTIVE')
     .order('name')
     .limit(8)
@@ -282,7 +273,7 @@ export async function getOwnerDashboardData(
     return {
       id: unit.id,
       name: unit.name || 'Unnamed unit',
-      type: mapUnitType(unit.unit_categories?.unit_type ?? null),
+      type: unit.unit_categories?.name ?? 'Unit',
       status: mapUnitStatus(unit, currentStay),
       currentGuest: currentStay ? getGuestName(currentStay) : undefined,
       checkOut: currentStay ? format(new Date(currentStay.check_out_date), 'MMM d') : undefined,
