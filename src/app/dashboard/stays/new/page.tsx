@@ -67,19 +67,31 @@ interface NewStayPageProps {
 }
 
 /** The `dates` param carries the selected nights; check-out is the day after the last one. */
+function isDateKey(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const parsed = new Date(`${value}T00:00:00Z`)
+  // Rejects impossible dates like 2026-02-31, which Date would roll over.
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+}
+
 function derivePeriod(dates?: string) {
+  // Malformed keys from a hand-edited URL are dropped instead of crashing the page.
   const dateKeys = dates
     ?.split(',')
     .map((date) => date.trim())
-    .filter(Boolean)
+    .filter(isDateKey)
     .sort() ?? []
 
-  if (dateKeys.length === 0) return { checkInDate: null, checkOutDate: null }
+  // `dates` is the sanitized param handed on to the client steps, which would
+  // otherwise trip over the same malformed keys when formatting them.
+  if (dateKeys.length === 0) return { dates: undefined, checkInDate: null, checkOutDate: null }
 
-  const lastNight = new Date(`${dateKeys[dateKeys.length - 1]}T00:00:00`)
-  lastNight.setDate(lastNight.getDate() + 1)
+  // UTC throughout, so the server's timezone can't shift check-out by a day.
+  const lastNight = new Date(`${dateKeys[dateKeys.length - 1]}T00:00:00Z`)
+  lastNight.setUTCDate(lastNight.getUTCDate() + 1)
 
   return {
+    dates: dateKeys.join(','),
     checkInDate: dateKeys[0],
     checkOutDate: lastNight.toISOString().slice(0, 10),
   }
@@ -125,7 +137,7 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
             serviceType={params.service}
             propertyId={params.property}
             propertyName={selectedProperty?.name}
-            dates={params.dates}
+            dates={period.dates}
             categories={categories}
           />
         </div>
@@ -153,7 +165,7 @@ export default async function NewStayPage({ searchParams }: NewStayPageProps) {
             propertyId={params.property}
             serviceType={params.service}
             propertyName={selectedProperty?.name}
-            dates={params.dates}
+            dates={period.dates}
             positions={params.positions}
             extras={params.extras}
             categories={categories}
