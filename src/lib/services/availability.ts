@@ -39,7 +39,7 @@ export interface AvailabilityCategory {
 export interface UnitCategoryAvailability {
   categoryId: string
   label: string
-  description: string
+  description: string | null
   unitType: string
   maxAdults: number
   maxChildren: number
@@ -56,12 +56,6 @@ export interface UnitCategoryAvailability {
   availableUnitIds: string[]
   /** Names of the member units, ordered — used for labelling only. */
   unitNames: string[]
-}
-
-// ─── Labelling ────────────────────────────────────────────────────────────────
-
-function humanizeUnitType(unitType: string) {
-  return unitType.charAt(0) + unitType.slice(1).toLowerCase().replaceAll('_', ' ')
 }
 
 // ─── Core calculation ─────────────────────────────────────────────────────────
@@ -144,7 +138,9 @@ export function buildCategoryAvailability(
       return {
         categoryId: category.id,
         label: category.name,
-        description: category.description ?? `${humanizeUnitType(category.unit_type)} available for direct booking.`,
+        // No generic filler: an identical stock sentence under every category
+        // carried no information, so categories without a text show none.
+        description: category.description?.trim() || null,
         unitType: category.unit_type,
         maxAdults: Math.max(category.capacity_adults, 1),
         maxChildren: Math.max(category.capacity_children, 0),

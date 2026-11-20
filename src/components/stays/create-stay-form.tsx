@@ -60,7 +60,8 @@ interface ServiceOption {
 export interface BookingCategory {
   categoryId: string
   label: string
-  description: string
+  /** unit_categories.description; null when the category has none. */
+  description: string | null
   unitType: string
   maxAdults: number
   maxChildren: number
@@ -901,9 +902,15 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
                         )}
                       >
                         <span className="block text-sm font-semibold text-foreground">{category.label}</span>
-                        <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">
-                          {category.description}
-                        </span>
+                        {category.description && (
+                          // Clamped to two lines; the full text stays reachable on hover.
+                          <span
+                            title={category.description}
+                            className="mt-1 line-clamp-2 text-xs text-muted-foreground"
+                          >
+                            {category.description}
+                          </span>
+                        )}
                         <span className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
                           <span>
                             {soldOut ? 'Not available' : `${category.maxSelectable} available`}
