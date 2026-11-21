@@ -103,7 +103,16 @@ export async function getCategoryAvailability(
     (units ?? []) as AvailabilityUnit[],
     occupiedUnitIds,
     hasPeriod,
-  )
+  ).filter(isSellable)
+}
+
+/**
+ * A category capped at 0 bookable units (e.g. an overbooking fallback room)
+ * is never sold, so the booking flow doesn't list it at all — it only shows
+ * up where units are handled individually.
+ */
+function isSellable(category: UnitCategoryAvailability) {
+  return category.bookableLimit > 0
 }
 
 /**

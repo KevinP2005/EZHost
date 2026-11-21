@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
+  Baby,
   BedDouble,
   BriefcaseBusiness,
-  Car,
   ChevronLeft,
   ChevronRight,
   Check,
@@ -89,6 +89,8 @@ interface ExtraOption {
   label: string
   description: string
   price: number
+  /** true: price is charged per night, false: once per booking. */
+  perNight: boolean
   icon: React.ElementType
 }
 
@@ -149,8 +151,9 @@ const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 /** Placeholder prices for categories without a stored base_rate. */
 const defaultRoomBasePrices = [145, 190, 245, 285, 320, 360]
 
-// The other rates are still fixed offsets from the base price until rates
-// become configurable per property.
+// Fixed offsets from the base price until rates become configurable per
+// property. Non-cancellable has no known discount yet, so it starts at the
+// regular price; staff can override it per booking.
 const rateOptions: RateOption[] = [
   {
     id: 'standard',
@@ -165,10 +168,10 @@ const rateOptions: RateOption[] = [
     modifier: 22,
   },
   {
-    id: 'flexible',
-    label: 'Flexible',
-    description: 'Free cancellation',
-    modifier: 34,
+    id: 'non-cancellable',
+    label: 'Non-cancellable',
+    description: 'No free cancellation',
+    modifier: 0,
   },
   {
     id: 'special-rate',
@@ -180,20 +183,27 @@ const rateOptions: RateOption[] = [
 
 const extraOptions: ExtraOption[] = [
   {
-    id: 'parking',
-    label: 'Parking',
-    description: 'Reserved parking spot for the stay.',
-    price: 18,
-    icon: Car,
+    id: 'baby-cot',
+    label: 'Babybett',
+    description: 'Baby cot set up in the room.',
+    price: 15,
+    perNight: true,
+    icon: Baby,
   },
   {
     id: 'pet',
     label: 'Pet',
     description: 'Pet cleaning and accommodation fee.',
     price: 24,
+    perNight: false,
     icon: PawPrint,
   },
 ]
+
+/** What an extra costs for the whole stay. */
+function extraAmount(extra: ExtraOption, nights: number) {
+  return extra.perNight ? extra.price * nights : extra.price
+}
 
 const idTypeLabels: Record<MainGuestForm['idType'], string> = {
   passport: 'Passport',
@@ -741,7 +751,7 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
   const nights = Math.max(dateKeys.length, 1)
 
   const selectedExtras = extraOptions.filter((extra) => selectedExtraIds.includes(extra.id))
-  const extrasTotal = selectedExtras.reduce((total, extra) => total + extra.price, 0)
+  const extrasTotal = selectedExtras.reduce((total, extra) => total + extraAmount(extra, nights), 0)
 
   // Every selected category contributes its own line; nothing is collapsed
   // into a single "selected room" any more.
@@ -1089,7 +1099,10 @@ export function BookingMatrix({ serviceType, propertyId, propertyName, dates, ca
                       <span className="block text-sm font-semibold text-foreground">{extra.label}</span>
                       <span className="block text-xs text-muted-foreground">{extra.description}</span>
                     </span>
-                    <span className="text-sm font-semibold text-foreground">{formatCurrency(extra.price)}</span>
+                    <span className="text-right text-sm font-semibold text-foreground">
+                      {formatCurrency(extra.price)}
+                      {extra.perNight && <span className="block text-[11px] font-normal text-muted-foreground">per night</span>}
+                    </span>
                   </button>
                 )
               })}
@@ -1268,7 +1281,7 @@ export function GuestDetailsStep({
   const selectedExtraIds = parseDateKeys(extras)
   const selectedExtras = extraOptions.filter((extra) => selectedExtraIds.includes(extra.id))
   const roomTotal = lines.reduce((sum, line) => sum + line.subtotal, 0)
-  const extrasTotal = selectedExtras.reduce((total, extra) => total + extra.price, 0)
+  const extrasTotal = selectedExtras.reduce((total, extra) => total + extraAmount(extra, nights), 0)
   const totalRooms = positions.reduce((count, position) => count + position.quantity, 0)
   const totalGuests = positions.reduce(
     (count, position) => count + (position.adults + position.children) * position.quantity,
@@ -1400,6 +1413,8 @@ export function GuestDetailsStep({
             id: extra.id,
             label: extra.label,
             price: extra.price,
+            per_night: extra.perNight,
+            amount: extraAmount(extra, nights),
           })),
           positions,
           primary_guest: mainGuest,
