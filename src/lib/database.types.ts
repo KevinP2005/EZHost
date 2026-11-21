@@ -92,6 +92,8 @@ export interface UnitCategory {
   description: string | null
   /** NULL = no administrative cap beyond physical inventory. */
   bookable_units_limit: number | null
+  /** Regular price per unit and night (excl. local tax). NULL = not set. */
+  base_rate: number | null
   created_at: string
   updated_at: string
 }

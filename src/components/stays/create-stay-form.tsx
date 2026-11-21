@@ -73,6 +73,8 @@ export interface BookingCategory {
   maxSelectable: number
   availableUnitIds: string[]
   unitNames: string[]
+  /** Regular price per unit and night from unit_categories.base_rate; null when not set. */
+  baseRate: number | null
 }
 
 interface RateOption {
@@ -144,13 +146,16 @@ const serviceOptions: ServiceOption[] = [
 
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+/** Placeholder prices for categories without a stored base_rate. */
 const defaultRoomBasePrices = [145, 190, 245, 285, 320, 360]
 
+// The other rates are still fixed offsets from the base price until rates
+// become configurable per property.
 const rateOptions: RateOption[] = [
   {
     id: 'standard',
     label: 'Standard',
-    description: 'Room only',
+    description: 'Regular rate',
     modifier: 0,
   },
   {
@@ -267,6 +272,7 @@ function getRangeDates(startDate: Date | null, endDate: Date | null) {
 }
 
 function categoryBasePrice(category: BookingCategory, index: number) {
+  if (category.baseRate != null) return category.baseRate
   return defaultRoomBasePrices[index] ?? 390 + index * 35
 }
 

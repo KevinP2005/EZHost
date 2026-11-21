@@ -34,6 +34,7 @@ export interface AvailabilityCategory {
   capacity_adults: number
   capacity_children: number
   bookable_units_limit: number | null
+  base_rate: number | string | null
 }
 
 export interface UnitCategoryAvailability {
@@ -56,6 +57,8 @@ export interface UnitCategoryAvailability {
   availableUnitIds: string[]
   /** Names of the member units, ordered — used for labelling only. */
   unitNames: string[]
+  /** unit_categories.base_rate — regular price per unit and night, null when not set. */
+  baseRate: number | null
 }
 
 // ─── Core calculation ─────────────────────────────────────────────────────────
@@ -78,7 +81,7 @@ export async function getCategoryAvailability(
   const [{ data: categories, error: categoriesError }, { data: units, error: unitsError }] = await Promise.all([
     supabase
       .from('unit_categories')
-      .select('id, name, description, unit_type, capacity_adults, capacity_children, bookable_units_limit')
+      .select('id, name, description, unit_type, capacity_adults, capacity_children, bookable_units_limit, base_rate')
       .eq('property_id', input.propertyId)
       .order('name'),
     supabase
@@ -153,6 +156,8 @@ export function buildCategoryAvailability(
           ? freeUnits.map((unit) => unit.id)
           : members.map((unit) => unit.id),
         unitNames: members.map((unit) => unit.name),
+        // PostgREST returns NUMERIC columns as strings.
+        baseRate: category.base_rate == null ? null : Number(category.base_rate),
       }
     })
     .sort((a, b) => a.label.localeCompare(b.label))

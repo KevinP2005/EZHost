@@ -11,6 +11,8 @@ export const createUnitCategorySchema = z.object({
   // Nullable: no admin UI to set this yet, but the field already exists so a
   // future admin surface doesn't need a schema change.
   bookable_units_limit: z.number().int().min(0).nullable().optional(),
+  /** Regular price per unit and night, excl. local tax. Prefills the booking flow. */
+  base_rate: z.number().min(0).nullable().optional(),
 })
 
 export type CreateUnitCategoryInput = z.infer<typeof createUnitCategorySchema>
